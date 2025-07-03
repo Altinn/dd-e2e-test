@@ -1,0 +1,175 @@
+{
+  "cookies": [
+    {
+      "name": "EPiStateMarker",
+      "value": "true",
+      "domain": "info.tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ARRAffinity",
+      "value": "0d0766ab2bb5b86378d8afba21deeb72158d7f31894048dce033ec11c3cb3363",
+      "domain": ".info.tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ARRAffinitySameSite",
+      "value": "0d0766ab2bb5b86378d8afba21deeb72158d7f31894048dce033ec11c3cb3363",
+      "domain": ".info.tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "BIGipServer~autoprov~aiport.ai-tt02-port.ai-test.osl.basefarm.net-86",
+      "value": "rd1o00000000000000000000ffff0a2b9906o86",
+      "domain": "tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "MvcSessionState",
+      "value": "abt0hnzs2bmg2bzqap4dtoz1",
+      "domain": "tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "dtCookie",
+      "value": "v_4_srv_72_sn_A20449240649FCA549C9CEC4B7474A5C_perc_100000_ol_0_mul_1_app-3A0c075c4cdf82efb1_0",
+      "domain": ".idporten.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "b01773c48f061e5a6fa15915170117e2",
+      "value": "7cac92c4cf5dd8292616b0fbb3f3bd1d",
+      "domain": "login.test.idporten.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "cb7d9a366a7303c9b9c2b3e565e635cd",
+      "value": "3d8c62b645011a1b12c72202e418ee9f",
+      "domain": "logo.test.idporten.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "0ba91516c140d36c0e0e98cf9b128957",
+      "value": "6ba59cd5af72a9a07a1761ed6c72a6f6",
+      "domain": "testid.test.idporten.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "IDPORTEN_AUTH",
+      "value": "dLsWWASNcv8Xmyati-JDug.LiM8JmHY7eGXJ5tlgDWv1Q",
+      "domain": "login.test.idporten.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": ".AspxAuthTT02",
+      "value": "B834544ABE49C6A3DE83093652B2DFAE26790D6CE429F5DED051715EF02404984A95D9436D48373BE3EED74E7E454BC0C097FF79AB6780D4BF761D2B19E9EA57A7C4CA892792401282A855C004CB18C16AA74BFB0B67842B88E07C08343C81B062E843C655216115E3A24C2F252D10D3CC7428185BB1EEBEE0B2C6369D4C133422DCF76C1A5BA6DC7FEDEEBDCA8E154BE7A6AD04D3E4332B634C478595F36F26281FEC8163C27904DB61A2525443EBCB01F2EE70352596D3CC05E5F04E1A09F74757A9457C9804E83F243222BCF8E7449C0AFBF8407A5FD45CC0F0ECF623515430D6738805ECECA60D4DAFB2819F5BCDCFD39854",
+      "domain": ".tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "altinnPersistentContext",
+      "value": "UL=1044&LM=17",
+      "domain": ".tt02.altinn.no",
+      "path": "/",
+      "expires": 1786117781.93837,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__RequestVerificationToken_L3Vp0",
+      "value": "DzMfKmQpzI3pfJNU0ISiSR5CQbB1h8fWaIKCo4f9DSeYdsGooH8fj0pPUAEiAfYd1LZjl_ZcyRIRY2LYD5LEg1us9ZU1",
+      "domain": "tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "AltinnPartyId",
+      "value": "50802133",
+      "domain": ".tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "AltinnPartyUuid",
+      "value": "197be1a5-0177-4a27-b30a-978068fa2c6f",
+      "domain": ".tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "altinnReportee",
+      "value": "07%2f03%2f2025+18%3a19%3a43&HANDLINGSEVNE+RAFFINERT",
+      "domain": ".tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "altinnContext",
+      "value": "vtJmC2+jdg8CSL7bOwzE3B3JnwsAhSwcrzEr1t2q9A1n6YFxIKogSfnwCpLh8UIqlesQ0Wbt9cCOp2G68P+t7pFrvBL9pHV9WKqfAQpjnNJITLIbRen6OpbPhNFs8llczdpAk/P9EUistfS+9ei8zAX/Qz4YhoVeZ6Q7RUX2Fn5G/NTT3T3wP6ORxN8G39R8KzzmQPvkLSiHjS5tMfYupIy02VTVKE6RBNrqzrHROfvJ+iYiLA2m+Nqpm1QZWFald37zxpEnaGbBPv2SCd8jzJTNbHLY3kMu8Ixh1rtI/eLZYbiVcScgbIlhLk8/8ZWk2I21qMh3NCworIFH8a3LeeLV7MAORymj2Nqb6nMRb6JRO+TQv5J8qJ1HZjXWQb6OZXH+Z96YMKLtt499RmL/g7AllBllf/1a32q+thGpuyr7frOx010CT4rMNK1WkeaEKBPj8bas6QH4cFkfIrt6kSOs00H1adBjt2eeejF9bpPUMD6kH+Pf0rEusda0CuT+lNQ4e50YymY0MJR2hZN7TouIt1XVClPJjoDJ3dpiBz7bCqqU8nFSGNTHyAAdrPbUSSC0KOY5Aoaa/Bc6yxj+QAYRd5W48ZuUP79n81t03q8hCKxVwwz28OPgnPCLXXXZZaJBYecBU6LpJPrUhqSmpKwIa+hsnUeDC//XaCvwf2FL+H1mjcQh1iBnR2kq3euaO17glIZ17kNPW7mUqWTgc0tgcDlXexU0b1PvhG0T/NxQOTILAye+tUoCX6MoFmtmJFXfWDu1HFcCTcWwmFP8PzvrpgR48TI7J/nkSq+RZjWUI02EjVtFjKnu5/bg5hNdNlCoPxviIHPqKBk5zqN1tlptu4dfjdrcsCvfgUPoQzhVLI7oh7U3MqPweDYWWQmfGh0oS7f+b82/GnhUz8sVOAwbHkRvI9lkuyo7vBrEtqFQNQsUZZ5jMyLyafbsQQyeFmsFX9pVg+5eGApKC8re+917aOqzZklJEkBJO78tzJ2xkzhxECrfb9o7SRCOebiDNjyEAFcYWqM0MWYHfdb+wrtdVZa6wRkkcNM9HJ60n/LAExU8E1ltzxyIdlnwRo4/tOkcsn1ZvOEd+oWS6zu72gWGYLJXmsOraovbl9l8yXxBOttw4Qbnwb+gx/6qMbiyKkKvF4xrqU00YKGc+tj1FBPI27Q3ywMpMcKxKXn07VbLT8lQMYoCCJdqXR5AlCRCICTOAAcyeybBOyAI3xxpQ7U5iK4mgJ18lnGmhXKjB4MeattFLm9ISCYs5C+4dax+sEOiJb1w6ix5IaOUSMyDARglAG1F2+jgFLHSxMoeNWJDN14q/jKGp3qCYym+EuyVcuyCsJeRaSuunzCD1vgA803vlk9icwtJKT0NF7I1bXYtEHm8V9pEGHHvsp9Jo+U4uPLuvj3wGuOCnUkUnxNKq82FeciNuWYixcUCLwQIx1khN3V2yhv4noiYzGnF8QnT1ZvrQZ3zIjH9VbvTAXohIR1p3cWFB89mgBWZLAM0ENAnFD7z5nM2oipFN2qcELzc7qbyuajGy0s9hvndqOUls+gErimbxu8jerxJfhGsgjkgyJnOL2wSHdj/KFezH1xoEl9f72JKHoJB72GqVvm0Y0fkTstcg+K/yZqfPwOXmAUigrnkHEDvmb8bkAxB+G2wviJDIPXj5FA/98YHvxhGiVlQYLbsY40ZgKeMzqUlGJxSakqlb1CgKWCbvrFyAUGIPzr9e/H9N2cOsjB9yJvXET5ZuWNpaacCRouOUMI3RUTO0l3IIdhc/JdBbkdxMaCSFs69NroT7X5oE/7YQ6veyE0GEaJQ+2288cw9WfxONw0nwmPXbGkL4KxCHCSFcCx5JiCSHQvgbCznGGU5oVixPYWSaaCzq8GeggTfnavFfDVvs34kimw5mMzbTXwupRx1",
+      "domain": "tt02.altinn.no",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    }
+  ],
+  "origins": []
+}
