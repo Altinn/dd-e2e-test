@@ -1,10 +1,10 @@
 import { chromium, type FullConfig } from "@playwright/test";
 
 async function globalSetup(config: FullConfig) {
-  const { baseURL, storageState } = config.projects[0].use;
+  const { storageState } = config.projects[0].use;
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  await page.goto(baseURL!);
+  await page.goto("https://tt02.altinn.no/");
 
   if (!process.env.HEIR_SSN || !process.env.HEIR_NAME) {
     throw new Error("SSN and HEIR environment variables must be set");
@@ -14,7 +14,7 @@ async function globalSetup(config: FullConfig) {
   await page.getByRole("button", { name: "Logg inn", exact: true }).click();
 
   // Select the high level test ID
-  await page.getByRole("link", { name: "TestID på nivå høyt Lag din" }).click();
+  await page.getByRole("link", { name: "TestID på nivå høyt" }).click();
 
   // Fill in the SSN and authenticate
   await page
@@ -27,7 +27,14 @@ async function globalSetup(config: FullConfig) {
     .getByRole("button", { name: process.env.HEIR_NAME + " Fødselsnr" })
     .click();
 
-  // Save the storage state
+  await page
+    .getByRole("link", { name: "Tilgang til Digitalt dødsbo" })
+    .first()
+    .click();
+  await page.getByRole("link", { name: "Åpne Digitalt dødsbo" }).click();
+
+  // Save the base URL and storage state
+  process.env.BASE_URL = page.url();
   await page.context().storageState({ path: storageState as string });
   await browser.close();
 }

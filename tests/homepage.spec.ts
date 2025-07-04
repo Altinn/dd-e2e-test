@@ -1,12 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("https://tt02.altinn.no/ui/messagebox/");
-  await page
-    .getByRole("link", { name: "Tilgang til Digitalt dødsbo" })
-    .first()
-    .click();
-  await page.getByRole("link", { name: "Åpne Digitalt dødsbo" }).click();
+test.beforeEach(async ({ page, baseURL }) => {
+  await page.goto(baseURL || "/");
 });
 
 test("has title", async ({ page }) => {
