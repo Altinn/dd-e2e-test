@@ -1,7 +1,3 @@
-# networks:
-#   altinntestlocal_network:
-#     external: false
-
 services:
   localtest_loadbalancer:
     container_name: altinn-localtest-loadbalancer
@@ -11,8 +7,6 @@ services:
       args:
         NGINX_VERSION: 1.25.3
     restart: always
-    # networks:
-    #   - altinntestlocal_network
     ports:
       - "${ALTINN3LOCAL_PORT:-80}:80"
     expose:
@@ -21,25 +15,23 @@ services:
       - NGINX_HOST=localhost
       - NGINX_PORT=80
       - TEST_DOMAIN=${TEST_DOMAIN:-local.altinn.cloud}
-      - HOST_DOMAIN=host.docker.internal
-      - INTERNAL_DOMAIN=host.docker.internal
+      - HOST_DOMAIN=oed
+      - INTERNAL_DOMAIN=altinn_localtest
       - ALTINN3LOCAL_PORT=${ALTINN3LOCAL_PORT:-80}
       - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/
       - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.conf
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./services/app-localtest/loadbalancer/templates:/etc/nginx/templates/:ro
+      - ./loadbalancer/templates:/etc/nginx/templates/:ro
       - ./services/app-localtest/loadbalancer/www:/www/:ro
 
   altinn_localtest:
       container_name: altinn_localtest
       image: altinn_localtest:latest
       restart: always
-      # networks:
-      #   - altinntestlocal_network
-      ports:
-        - "5101:5101"
+      # ports:
+      #   - "5101:5101"
       expose:
         - "5101:5101"
       build:
@@ -49,6 +41,8 @@ services:
         - ASPNETCORE_URLS=http://*:5101/
         - GeneralSettings__BaseUrl=http://${TEST_DOMAIN:-local.altinn.cloud}:${ALTINN3LOCAL_PORT:-80}
         - GeneralSettings__HostName=${TEST_DOMAIN:-local.altinn.cloud}
+        - LocalPlatformSettings__LocalAppUrl=http://oed:5005
+        - LocalPlatformSettings__LocalFrontendHostname=oed,
 
       volumes:
         - ./services/app-localtest/testdata:/testdata
@@ -69,8 +63,6 @@ services:
           interval: 1s
           timeout: 5s
           retries: 10
-    # networks:
-    #   - altinntestlocal_network
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -89,27 +81,21 @@ services:
       - PlatformSettings__ApiAuthenticationEndpoint=http://altinn_localtest:5101/authentication/api/v1/
       - PlatformSettings__ApiAuthorizationEndpoint=http://altinn_localtest:5101/authorization/api/v1/
       - OedConfig__Archive__Host=http://altinn_localtest:5101
+      - OedConfig__Host=localtest_loadbalancer
       - LOCALTEST_TOKEN_ENDPOINT=http://altinn_localtest:5101
 
     restart: always
-    ports: 
-      - "5005:5005"
+    # ports: 
+    #   - "5005:5005"
     expose:
       - "5005:5005"
     volumes:
       - ./services/oed/app/config/authorization/policy.xml:/app/config/authorization/policy.xml
-
-    # networks:
-    #   - altinntestlocal_network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
   
   # oed-declaration:
   #   build: ./services/oed-declaration
   #   environment:
   #     - ASPNETCORE_ENVIRONMENT=Development
   #   restart: always
-
-
-# volumes:
-#   AltinnPlatformLocal:
