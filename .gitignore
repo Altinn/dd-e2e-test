@@ -37,3 +37,6 @@ jest-*
 
 # Optional: if using Type
 storageState.json
+
+# Docker compose source code
+infra/services
