@@ -1,0 +1,9 @@
+{
+  "id": "digdir/oed-declaration",
+  "versionId": "1",
+  "org": "digdir",
+  "title": { "nb": "dd" },
+  "validFrom": "2020-01-01T00:00:00Z",
+  "validTo": "2220-01-01T00:00:00Z",
+  "processId": "SingleDataTask"
+}

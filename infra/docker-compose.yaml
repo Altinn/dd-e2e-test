@@ -15,8 +15,8 @@ services:
       - NGINX_HOST=localhost
       - NGINX_PORT=80
       - TEST_DOMAIN=${TEST_DOMAIN:-local.altinn.cloud}
-      - HOST_DOMAIN=oed
-      - INTERNAL_DOMAIN=altinn_localtest
+      - HOST_DOMAIN=host.docker.internal
+      - INTERNAL_DOMAIN=host.docker.internal
       - ALTINN3LOCAL_PORT=${ALTINN3LOCAL_PORT:-80}
       - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/
       - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.conf
@@ -30,9 +30,7 @@ services:
       container_name: altinn_localtest
       image: altinn_localtest:latest
       restart: always
-      # ports:
-      #   - "5101:5101"
-      expose:
+      ports:
         - "5101:5101"
       build:
         context: ./services/app-localtest
@@ -41,13 +39,15 @@ services:
         - ASPNETCORE_URLS=http://*:5101/
         - GeneralSettings__BaseUrl=http://${TEST_DOMAIN:-local.altinn.cloud}:${ALTINN3LOCAL_PORT:-80}
         - GeneralSettings__HostName=${TEST_DOMAIN:-local.altinn.cloud}
-        - LocalPlatformSettings__LocalAppUrl=http://oed:5005
-        - LocalPlatformSettings__LocalFrontendHostname=oed,
+        - GeneralSettings__Applications="digdir/oed,digdir/oed-declaration"
+        - LocalPlatformSettings__LocalAppUrl=http://host.docker.internal
+        - LocalPlatformSettings__LocalFrontendHostname=host.docker.internal,
 
       volumes:
         - ./services/app-localtest/testdata:/testdata
         - ./testdata/authorization/roles/User_1337/party_501337/roles.json:/testdata/authorization/roles/User_1337/party_501337/roles.json
         - ./testdata/authorization/roles/User_12345/party_512345/roles.json:/testdata/authorization/roles/User_12345/party_512345/roles.json
+        - ./applications/digdir/oed-declaration.json:/AltinnPlatformLocal/documentdb/applications/digdir/oed-declaration.json
 
       extra_hosts:
         - "host.docker.internal:host-gateway"
@@ -74,28 +74,40 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__Postgres=Server=oed-db;Username=oedpguser;Database=oed;Port=5432;Password=secret;SSLMode=Prefer
-      - AppSettings__OpenIdWellKnownEndpoint=http://altinn_localtest:5101/authentication/api/v1/openid/
-      - PlatformSettings__ApiStorageEndpoint=http://altinn_localtest:5101/storage/api/v1/
-      - PlatformSettings__ApiRegisterEndpoint=http://altinn_localtest:5101/register/api/v1/
-      - PlatformSettings__ApiProfileEndpoint=http://altinn_localtest:5101/profile/api/v1/
-      - PlatformSettings__ApiAuthenticationEndpoint=http://altinn_localtest:5101/authentication/api/v1/
-      - PlatformSettings__ApiAuthorizationEndpoint=http://altinn_localtest:5101/authorization/api/v1/
-      - OedConfig__Archive__Host=http://altinn_localtest:5101
-      - OedConfig__Host=localtest_loadbalancer
-      - LOCALTEST_TOKEN_ENDPOINT=http://altinn_localtest:5101
+      - AppSettings__OpenIdWellKnownEndpoint=http://host.docker.internal:5101/authentication/api/v1/openid/
+      - PlatformSettings__ApiStorageEndpoint=http://host.docker.internal:5101/storage/api/v1/
+      - PlatformSettings__ApiRegisterEndpoint=http://host.docker.internal:5101/register/api/v1/
+      - PlatformSettings__ApiProfileEndpoint=http://host.docker.internal:5101/profile/api/v1/
+      - PlatformSettings__ApiAuthenticationEndpoint=http://host.docker.internal:5101/authentication/api/v1/
+      - PlatformSettings__ApiAuthorizationEndpoint=http://host.docker.internal:5101/authorization/api/v1/
+      - OedConfig__Archive__Host=http://host.docker.internal:5101
+      - OedConfig__Host=host.docker.internal
+      - LOCALTEST_TOKEN_ENDPOINT=http://host.docker.internal:5101
 
     restart: always
-    # ports: 
-    #   - "5005:5005"
-    expose:
+    ports: 
       - "5005:5005"
+    # expose:
+    #   - "5005:5005"
     volumes:
       - ./services/oed/app/config/authorization/policy.xml:/app/config/authorization/policy.xml
-    # extra_hosts:
-    #   - "host.docker.internal:host-gateway"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   
-  # oed-declaration:
-  #   build: ./services/oed-declaration
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #   restart: always
+  oed-declaration:
+    build: ./services/oed-declaration
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - AppSettings__OpenIdWellKnownEndpoint=http://host.docker.internal:5101/authentication/api/v1/openid/
+      - PlatformSettings__ApiStorageEndpoint=http://host.docker.internal:5101/storage/api/v1/
+      - PlatformSettings__ApiRegisterEndpoint=http://host.docker.internal:5101/register/api/v1/
+      - PlatformSettings__ApiProfileEndpoint=http://host.docker.internal:5101/profile/api/v1/
+      - PlatformSettings__ApiAuthenticationEndpoint=http://host.docker.internal:5101/authentication/api/v1/
+      - PlatformSettings__ApiAuthorizationEndpoint=http://host.docker.internal:5101/authorization/api/v1/
+      - LOCALTEST_TOKEN_ENDPOINT=http://host.docker.internal:5101
+
+    restart: always
+    ports:
+      - "5006:5005"
+    volumes:
+      - ./services/oed-declaration/App/config/authorization/policy.xml:/App/config/authorization/policy.xml
