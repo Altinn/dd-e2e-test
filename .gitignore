@@ -40,3 +40,7 @@ storageState.json
 
 # Docker compose source code
 infra/services
+
+# Auto-generated artifacts
+results.xml
+*.png

@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Digitalt Dødsbo end to end tests",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "playwright test"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
