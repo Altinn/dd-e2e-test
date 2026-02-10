@@ -20,11 +20,11 @@ interface LinkValidationResult {
 }
 
 test.describe('Link Validation', () => {
-  test('should validate all links from resources file', async ({ request }) => {
+  test('should validate all links from resources file', async ({ page }) => {
     // Step 1: Fetch the resources file
     const resourceEndpoint = 'https://digdir.apps.tt02.altinn.no/digdir/oed/api/v1/texts/nb';
     
-    const response = await request.get(resourceEndpoint);
+    const response = await page.request.get(resourceEndpoint);
     expect(response.ok(), `Failed to fetch resources from ${resourceEndpoint}`).toBeTruthy();
     
     const resourcesData = await response.json();
@@ -52,10 +52,31 @@ test.describe('Link Validation', () => {
       }
 
       try {
-        const response = await request.get(link, {
+        let response = await page.request.get(link, {
           maxRedirects: 10,
           timeout: 10000, // 10 second timeout per link
         });
+        
+        // If we get 403, retry using actual page navigation (more browser-like)
+        if (response.status() === 403) {
+          console.log(`  Retrying ${link} with page navigation due to 403...`);
+          try {
+            const pageResponse = await page.goto(link, {
+              waitUntil: 'domcontentloaded',
+              timeout: 10000,
+            });
+            if (pageResponse) {
+              response = {
+                status: () => pageResponse.status(),
+                ok: () => pageResponse.ok(),
+                url: () => pageResponse.url(),
+              } as any;
+            }
+          } catch (navError) {
+            // If page navigation also fails, keep the original 403 response
+            console.log(`  Page navigation also failed: ${navError}`);
+          }
+        }
 
         const result: LinkValidationResult = {
           url: link,
