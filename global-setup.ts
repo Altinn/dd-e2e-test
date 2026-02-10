@@ -4,14 +4,11 @@ async function globalSetup(config: FullConfig) {
   const { storageState } = config.projects[0].use;
   const browser = await chromium.launch();
   const page = await browser.newPage();
-  await page.goto("https://tt02.altinn.no/");
+  await page.goto("https://af.tt02.altinn.no/?mock=true");
 
   if (!process.env.HEIR_SSN || !process.env.HEIR_NAME) {
     throw new Error("SSN and HEIR environment variables must be set");
   }
-
-  // Log in to Altinn
-  await page.getByRole("button", { name: "Logg inn", exact: true }).click();
 
   // Select the high level test ID
   await page.getByRole("link", { name: "TestID på nivå høyt" }).click();
@@ -22,11 +19,7 @@ async function globalSetup(config: FullConfig) {
     .fill(process.env.HEIR_SSN);
   await page.getByRole("button", { name: "Autentiser" }).click();
 
-  // TODO: Add a more robust check for the correct button
-  await page
-    .getByRole("button", { name: process.env.HEIR_NAME + " Fødselsnr" })
-    .click();
-
+  // Open the Altinn message and click on the link to access Digitalt dødsbo
   await page
     .getByRole("link", { name: "Tilgang til Digitalt dødsbo" })
     .first()

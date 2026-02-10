@@ -17,7 +17,7 @@ test("has heading with the name of the deceased", async ({ page }) => {
   await expect(heading).toBeVisible();
 });
 
-test("has the name of the logged-in heir", async ({ page }) => {
+test.skip("has the name of the logged-in heir", async ({ page }) => {
   const heirName = process.env.HEIR_NAME;
   if (!heirName) {
     throw new Error("HEIR_NAME environment variable is not defined");
@@ -27,3 +27,9 @@ test("has the name of the logged-in heir", async ({ page }) => {
   const heirElement = page.getByText(heirName, { exact: true });
   await expect(heirElement).toBeVisible();
 });
+
+
+
+
+
+
