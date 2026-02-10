@@ -4,6 +4,16 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      grep:
+        description: 'Run only matching tests (e.g. @smoke)'
+        required: false
+        default: ''
+      headed:
+        description: 'Run tests in headed mode'
+        type: boolean
+        default: false
 jobs:
   test:
     timeout-minutes: 60
@@ -21,8 +31,12 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
+      run: |
+        npx playwright test \
+          ${{ github.event.inputs.grep && format('--grep {0}', github.event.inputs.grep) }} \
+          ${{ github.event.inputs.headed == 'true' && '--headed' || '' }}
+    - name: Upload Playwright report
+      uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
         name: playwright-report
