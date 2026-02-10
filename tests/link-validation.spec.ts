@@ -20,53 +20,19 @@ interface LinkValidationResult {
 }
 
 test.describe('Link Validation', () => {
-  test('should validate all links from resources file', async ({ request, baseURL }) => {
-    test.setTimeout(120000); // 2 minutes for validating many links
-    
-    if (!baseURL) {
-      throw new Error('BASE_URL is not configured. Run global setup first.');
-    }
-
+  test('should validate all links from resources file', async ({ request }) => {
     // Step 1: Fetch the resources file
-    // Adjust this endpoint based on your actual API structure
-    // Common patterns: /api/v1/texts/nb, /api/resources/nb, /resources.nb.json
-    const resourceEndpoints = [
-      `${baseURL}/api/v1/texts/nb`,
-      `${baseURL}/api/resources/nb.json`,
-      `${baseURL}/resources.nb.json`,
-    ];
-
-    let resourcesData: any = null;
-    let successfulEndpoint: string | null = null;
-
-    // Try each possible endpoint
-    for (const endpoint of resourceEndpoints) {
-      try {
-        console.log(`Attempting to fetch resources from: ${endpoint}`);
-        const response = await request.get(endpoint);
-        
-        if (response.ok()) {
-          resourcesData = await response.json();
-          successfulEndpoint = endpoint;
-          console.log(`✓ Successfully fetched resources from: ${endpoint}`);
-          break;
-        }
-      } catch (error) {
-        console.log(`✗ Failed to fetch from ${endpoint}: ${error}`);
-      }
-    }
-
-    if (!resourcesData) {
-      throw new Error(
-        `Could not fetch resources file from any of the attempted endpoints:\n${resourceEndpoints.join('\n')}\n\n` +
-        `Please verify the correct endpoint and update the test.`
-      );
-    }
+    const resourceEndpoint = 'https://digdir.apps.tt02.altinn.no/digdir/oed/api/v1/texts/nb';
+    
+    const response = await request.get(resourceEndpoint);
+    expect(response.ok(), `Failed to fetch resources from ${resourceEndpoint}`).toBeTruthy();
+    
+    const resourcesData = await response.json();
 
     // Step 2: Extract all URLs from the resources data
     const links = extractLinksFromResources(resourcesData);
     
-    console.log(`\nFound ${links.length} links to validate`);
+    console.log(`Validating ${links.length} links...`);
     
     if (links.length === 0) {
       console.warn('Warning: No links found in resources file. JSON structure:', 
@@ -82,15 +48,8 @@ test.describe('Link Validation', () => {
     for (const link of links) {
       // Skip invalid or empty URLs
       if (!link || !isValidUrl(link)) {
-        console.log(`⊘ Skipping invalid URL: ${link}`);
         continue;
       }
-
-      // Optional: Skip external links (uncomment if you only want to test internal links)
-      // if (isExternalLink(link, baseURL)) {
-      //   console.log(`⊘ Skipping external link: ${link}`);
-      //   continue;
-      // }
 
       try {
         const response = await request.get(link, {
@@ -103,20 +62,35 @@ test.describe('Link Validation', () => {
           status: response.status(),
           ok: response.ok(),
           finalUrl: response.url(),
-          redirected: response.url() !== link,
+          redirected: normalizeUrl(response.url()) !== normalizeUrl(link),
         };
 
         results.push(result);
 
+        // Check if URL contains /404 (indicates redirect to 404 page)
+        const is404Page = result.finalUrl.includes('/404');
+
         if (!response.ok()) {
-          result.error = `HTTP ${response.status()}`;
+          // Provide specific error messages based on status code
+          const statusMessages: { [key: number]: string } = {
+            400: 'Bad Request',
+            401: 'Unauthorized',
+            403: 'Forbidden',
+            404: 'Not Found',
+            500: 'Internal Server Error',
+            502: 'Bad Gateway',
+            503: 'Service Unavailable',
+            504: 'Gateway Timeout',
+          };
+          result.error = statusMessages[response.status()] || `HTTP ${response.status()}`;
           failedLinks.push(result);
-          console.log(`✗ [${response.status()}] ${link}`);
+        } else if (is404Page) {
+          // Treat redirect to /404 page as a broken link
+          result.error = 'Redirected to 404 page';
+          result.ok = false;
+          failedLinks.push(result);
         } else if (result.redirected) {
           redirectedLinks.push(result);
-          console.log(`↪ [${response.status()}] ${link} → ${result.finalUrl}`);
-        } else {
-          console.log(`✓ [${response.status()}] ${link}`);
         }
       } catch (error) {
         const result: LinkValidationResult = {
@@ -129,39 +103,36 @@ test.describe('Link Validation', () => {
         };
         results.push(result);
         failedLinks.push(result);
-        console.log(`✗ [ERROR] ${link}: ${result.error}`);
       }
     }
 
     // Step 4: Generate report
-    console.log('\n' + '='.repeat(80));
-    console.log('LINK VALIDATION REPORT');
-    console.log('='.repeat(80));
-    console.log(`Total links checked: ${results.length}`);
-    console.log(`Successful (2xx): ${results.filter(r => r.ok).length}`);
-    console.log(`Failed: ${failedLinks.length}`);
-    console.log(`Redirected: ${redirectedLinks.length}`);
-
-    if (failedLinks.length > 0) {
-      console.log('\n❌ FAILED LINKS:');
-      failedLinks.forEach(link => {
-        console.log(`  ${link.url}`);
-        console.log(`    Status: ${link.status} ${link.error || ''}`);
-      });
-    }
+    console.log(`\nResults: ${results.filter(r => r.ok).length} passed, ${failedLinks.length} failed, ${redirectedLinks.length} redirected`);
 
     if (redirectedLinks.length > 0) {
-      console.log('\n↪️  REDIRECTED LINKS:');
-      redirectedLinks.forEach(link => {
-        console.log(`  ${link.url}`);
-        console.log(`    → ${link.finalUrl}`);
+      console.log('\nRedirected links:');
+      redirectedLinks.forEach((link, index) => {
+        console.log(`  ${index + 1}. ${link.url} -> ${link.finalUrl}`);
       });
     }
 
-    // Step 5: Assertions
-    expect(failedLinks.length, 
-      `Found ${failedLinks.length} broken link(s). See console output for details.`
-    ).toBe(0);
+    if (failedLinks.length > 0) {
+      console.log('\nFailed links:');
+      failedLinks.forEach((link, index) => {
+        console.log(`  ${index + 1}. [${link.status === 0 ? 'ERROR' : link.status}] ${link.url} - ${link.error}`);
+      });
+    }
+
+    // Step 5: Assertions - Fail the test if any links failed
+    if (failedLinks.length > 0) {
+      const errorSummary = failedLinks.map((link, i) => 
+        `\n  ${i + 1}. [${link.status === 0 ? 'ERROR' : link.status}] ${link.url} - ${link.error}`
+      ).join('');
+      
+      throw new Error(
+        `\n${failedLinks.length} broken link(s) found:${errorSummary}\n`
+      );
+    }
 
     // Optional: Fail on unexpected redirects (uncomment if redirects should be treated as failures)
     // expect(redirectedLinks.length, 
@@ -172,7 +143,7 @@ test.describe('Link Validation', () => {
 
 /**
  * Extract all URLs from the resources JSON data
- * This function needs to be adapted based on the actual structure of resources.nb.json
+ * Searches for URLs in property values and within text content (e.g., markdown)
  */
 function extractLinksFromResources(data: any): string[] {
   const links = new Set<string>();
@@ -180,21 +151,21 @@ function extractLinksFromResources(data: any): string[] {
   // Helper function to recursively find URLs in the JSON structure
   function findUrls(obj: any): void {
     if (typeof obj === 'string') {
-      // Check if the string is a URL
-      if (isValidUrl(obj)) {
-        links.add(obj);
+      // Extract all URLs from the string (including those in markdown or plain text)
+      const urlPattern = /https?:\/\/[^\s\)\]"']+/g;
+      const matches = obj.match(urlPattern);
+      if (matches) {
+        matches.forEach(url => {
+          // Clean up trailing punctuation that might be part of markdown syntax
+          const cleanUrl = url.replace(/[,;:.!?]+$/, '');
+          if (isValidUrl(cleanUrl)) {
+            links.add(cleanUrl);
+          }
+        });
       }
     } else if (Array.isArray(obj)) {
       obj.forEach(item => findUrls(item));
     } else if (obj && typeof obj === 'object') {
-      // Check for common URL property names
-      const urlFields = ['url', 'href', 'link', 'uri', 'path', 'src'];
-      for (const field of urlFields) {
-        if (obj[field] && typeof obj[field] === 'string' && isValidUrl(obj[field])) {
-          links.add(obj[field]);
-        }
-      }
-      
       // Recursively check all values
       Object.values(obj).forEach(value => findUrls(value));
     }
@@ -202,6 +173,13 @@ function extractLinksFromResources(data: any): string[] {
 
   findUrls(data);
   return Array.from(links).sort();
+}
+
+/**
+ * Normalize URL by removing trailing slash for comparison purposes
+ */
+function normalizeUrl(url: string): string {
+  return url.replace(/\/$/, '');
 }
 
 /**
