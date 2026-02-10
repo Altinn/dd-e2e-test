@@ -56,7 +56,7 @@ test.describe('Link Validation', () => {
           maxRedirects: 10,
           timeout: 10000, // 10 second timeout per link
         });
-
+        
         // If we get 403, retry using actual page navigation (more browser-like)
         if (response.status() === 403) {
           console.log(`  Retrying ${link} with page navigation due to 403...`);
