@@ -15,6 +15,8 @@ jobs:
         node-version: lts/*
     - name: Install dependencies
       run: npm ci
+    - name: Echo
+      run: echo "$HEIR_NAME $HEIR_SSN"
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Run Playwright tests
