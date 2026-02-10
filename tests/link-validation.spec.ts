@@ -58,7 +58,9 @@ test.describe('Link Validation', () => {
         });
         
         // If we get 403, retry using actual page navigation (more browser-like)
-        if (response.status() === 403) {
+        // Skip page navigation for PDFs and other non-HTML content
+        const isPdf = link.toLowerCase().endsWith('.pdf');
+        if (response.status() === 403 && !isPdf) {
           console.log(`  Retrying ${link} with page navigation due to 403...`);
           try {
             const pageResponse = await page.goto(link, {
