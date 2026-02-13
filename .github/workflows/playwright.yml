@@ -36,7 +36,7 @@ jobs:
           ${{ github.event.inputs.grep && format('--grep {0}', github.event.inputs.grep) }} \
           ${{ github.event.inputs.headed == 'true' && '--headed' || '' }}
     - name: Upload Playwright report
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
       if: ${{ !cancelled() }}
       with:
         name: playwright-report
