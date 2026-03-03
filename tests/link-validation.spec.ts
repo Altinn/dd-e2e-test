@@ -23,19 +23,19 @@ test.describe('Link Validation', () => {
   test('should validate all links from resources file', async ({ page }) => {
     // Step 1: Fetch the resources file
     const resourceEndpoint = 'https://digdir.apps.tt02.altinn.no/digdir/oed/api/v1/texts/nb';
-    
+
     const response = await page.request.get(resourceEndpoint);
     expect(response.ok(), `Failed to fetch resources from ${resourceEndpoint}`).toBeTruthy();
-    
+
     const resourcesData = await response.json();
 
     // Step 2: Extract all URLs from the resources data
     const links = extractLinksFromResources(resourcesData);
-    
+
     console.log(`Validating ${links.length} links...`);
-    
+
     if (links.length === 0) {
-      console.warn('Warning: No links found in resources file. JSON structure:', 
+      console.warn('Warning: No links found in resources file. JSON structure:',
         JSON.stringify(resourcesData, null, 2).substring(0, 500));
       return;
     }
@@ -56,7 +56,7 @@ test.describe('Link Validation', () => {
           maxRedirects: 10,
           timeout: 10000, // 10 second timeout per link
         });
-        
+
         // If we get 403, retry using actual page navigation (more browser-like)
         // Skip page navigation for PDFs and other non-HTML content
         const isPdf = link.toLowerCase().endsWith('.pdf');
@@ -148,10 +148,10 @@ test.describe('Link Validation', () => {
 
     // Step 5: Assertions - Fail the test if any links failed
     if (failedLinks.length > 0) {
-      const errorSummary = failedLinks.map((link, i) => 
+      const errorSummary = failedLinks.map((link, i) =>
         `\n  ${i + 1}. [${link.status === 0 ? 'ERROR' : link.status}] ${link.url} - ${link.error}`
       ).join('');
-      
+
       throw new Error(
         `\n${failedLinks.length} broken link(s) found:${errorSummary}\n`
       );

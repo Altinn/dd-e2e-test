@@ -18,7 +18,6 @@ test("heirs tab includes the logged-in heir", async ({ page }) => {
   }
 
   await page.getByRole("tab", { name: "Arvinger" }).click();
-  const heirLastName = heirName.split(" ").slice(-1)[0]; // Get the last name of the heir
-  const heirElement = page.getByText(new RegExp(`^${heirLastName}.*`), { exact: false });
-  await expect(heirElement).toBeVisible();
+  const heirsTable = page.getByRole("table");
+  await expect(heirsTable).toContainText(heirName.trim());
 });
