@@ -14,6 +14,9 @@ jobs:
   test:
     name: Test (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
+    env:
+      HEIR_NAME: ${{ vars.HEIR_NAME }}
+      HEIR_SSN: ${{ vars.HEIR_SSN }}
     strategy:
       fail-fast: false
       matrix:
@@ -23,7 +26,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm # built-in npm cache, keyed on package-lock.json
 
       - name: Install dependencies
