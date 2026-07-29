@@ -28,6 +28,9 @@ async function globalSetup(config: FullConfig) {
 
   // Save the base URL and storage state
   process.env.BASE_URL = page.url();
+
+  console.log(`Base URL set to: ${process.env.BASE_URL}`);
+  
   await page.context().storageState({ path: storageState as string });
   await browser.close();
 }
