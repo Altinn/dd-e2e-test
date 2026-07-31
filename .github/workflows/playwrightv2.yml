@@ -15,6 +15,7 @@ jobs:
     name: Test (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
     env:
+      DECEASED_NAME: ${{ vars.DECEASED_NAME }}
       HEIR_NAME: ${{ vars.HEIR_NAME }}
       HEIR_SSN: ${{ vars.HEIR_SSN }}
     strategy:

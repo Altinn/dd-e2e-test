@@ -9,7 +9,11 @@ test("has title", async ({ page }) => {
 });
 
 test("has heading with the name of the deceased", async ({ page }) => {
-  const deceasedName = process.env.DECEASSED_NAME;
+  const deceasedName = process.env.DECEASED_NAME;
+  if (!deceasedName) {
+    throw new Error("DECEASED_NAME environment variable is not defined");
+  }
+
   const heading = page.getByRole("heading", {
     name: deceasedName,
     level: 1,
