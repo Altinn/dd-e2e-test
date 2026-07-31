@@ -1,8 +1,8 @@
 name: Playwright Tests V2
 
 on:
-  #schedule:
-  #  - cron: '0 3 * * *' 
+  schedule:
+    - cron: '0 3 * * *' 
   workflow_dispatch:
 
 # Cancel superseded runs on the same ref to save minutes.
@@ -81,6 +81,12 @@ jobs:
     if: ${{ !cancelled() }}
     needs: [test]
     runs-on: ubuntu-latest
+    # Surfaced to the notify-slack job so the message can carry result counts.
+    outputs:
+      available: ${{ steps.stats.outputs.available }}
+      passed: ${{ steps.stats.outputs.passed }}
+      failed: ${{ steps.stats.outputs.failed }}
+      flaky: ${{ steps.stats.outputs.flaky }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -99,8 +105,14 @@ jobs:
           pattern: blob-report-*
           merge-multiple: true
 
-      - name: Merge into HTML report
-        run: npx playwright merge-reports --reporter=html ./all-blob-reports
+      # Config file rather than --reporter=html,json so the JSON lands in a
+      # file instead of stdout. See playwright.merge.config.ts.
+      - name: Merge into HTML + JSON reports
+        run: npx playwright merge-reports --config playwright.merge.config.ts ./all-blob-reports
+
+      - name: Extract result counts
+        id: stats
+        run: node .github/scripts/report-stats.js merged-report.json >> "$GITHUB_OUTPUT"
 
       - name: Upload HTML report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -108,3 +120,75 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+  notify-slack:
+    name: Notify Slack
+    needs: [test, merge-report]
+    # Fire on a genuine failure only — not when the run was cancelled.
+    if: ${{ !cancelled() && (needs.test.result == 'failure' || needs.merge-report.result == 'failure') }}
+    runs-on: ubuntu-latest
+    env:
+      # `secrets` is not available in `if:`, so it is mapped here and the
+      # presence check happens in a step instead.
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Check webhook is configured
+        id: check
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SLACK_WEBHOOK_URL is not set — skipping the Slack notification."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build result summary
+        id: summary
+        env:
+          AVAILABLE: ${{ needs.merge-report.outputs.available }}
+          PASSED: ${{ needs.merge-report.outputs.passed }}
+          FAILED: ${{ needs.merge-report.outputs.failed }}
+          FLAKY: ${{ needs.merge-report.outputs.flaky }}
+        run: |
+          if [ "$AVAILABLE" = "true" ]; then
+            echo "line=*${PASSED}* passed · *${FAILED}* failed · *${FLAKY}* flaky" >> "$GITHUB_OUTPUT"
+          else
+            echo "line=_Result counts unavailable — the report merge did not complete._" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send Slack notification
+        if: steps.check.outputs.configured == 'true'
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "🔴 Playwright Tests V2 failed — ${{ github.repository }} (${{ github.ref_name }})",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "🔴 Playwright Tests V2 — FAILED" }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repo*\n${{ github.repository }}" },
+                    { "type": "mrkdwn", "text": "*Branch*\n${{ github.ref_name }}" },
+                    { "type": "mrkdwn", "text": "*Run*\n#${{ github.run_number }} (${{ github.event_name }})" },
+                    { "type": "mrkdwn", "text": "*Results*\n${{ steps.summary.outputs.line }}" }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View run & download report" },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                      "style": "danger"
+                    }
+                  ]
+                }
+              ]
+            }
