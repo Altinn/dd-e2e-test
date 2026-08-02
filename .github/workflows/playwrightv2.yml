@@ -1,4 +1,4 @@
-name: Playwright Tests V2
+name: Playwright Tests
 
 on:
   schedule:
@@ -169,11 +169,11 @@ jobs:
           # A forced notification on a green run must not look like a real
           # alert, or someone will go chasing a failure that never happened.
           if [ "$TEST_RESULT" = "failure" ] || [ "$MERGE_RESULT" = "failure" ]; then
-            echo "header=🔴 Playwright Tests V2 — FAILED" >> "$GITHUB_OUTPUT"
-            echo "fallback=🔴 Playwright Tests V2 failed — run #${RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+            echo "header=🔴 Playwright Tests — FAILED" >> "$GITHUB_OUTPUT"
+            echo "fallback=🔴 Playwright Tests failed — run #${RUN_NUMBER}" >> "$GITHUB_OUTPUT"
           else
-            echo "header=🧪 Playwright Tests V2 — test notification" >> "$GITHUB_OUTPUT"
-            echo "fallback=🧪 Playwright Tests V2 test notification — run #${RUN_NUMBER}, nothing failed" >> "$GITHUB_OUTPUT"
+            echo "header=🧪 Playwright Tests — test notification" >> "$GITHUB_OUTPUT"
+            echo "fallback=🧪 Playwright Tests test notification — run #${RUN_NUMBER}, nothing failed" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Send Slack notification
