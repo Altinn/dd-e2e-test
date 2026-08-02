@@ -144,6 +144,44 @@ test("the ditt valg tab offers the probate forms the heir can choose", async ({
   await page.getByRole("tab", { name: "Ditt valg", exact: true }).click();
   const panel = page.locator(visiblePanel);
 
+  // The tab renders one of two states depending on the heir this run logs in
+  // as: either the probate forms are offered, or the heir has already started
+  // a declaration and is offered to continue it or start over. Waiting for
+  // whichever arrives first keeps the branch below from reading a panel that
+  // is still rendering.
+  const continueDeclaration = panel.getByRole("button", {
+    name: /^Fortsett utfylling/,
+  });
+  const firstProbateForm = panel.getByRole("heading", {
+    name: "Uskifte",
+    exact: true,
+  });
+  await expect(continueDeclaration.or(firstProbateForm).first()).toBeVisible();
+
+  if (await continueDeclaration.isVisible()) {
+    // A declaration is already in progress. The choice cannot be remade from
+    // the outside without discarding it, so this only checks that both ways
+    // out are offered.
+    test.info().annotations.push({
+      type: "state",
+      description: "the heir has already started a declaration",
+    });
+
+    await expect(
+      panel.getByRole("heading", { name: /^Du har startet utfylling/ })
+    ).toBeVisible();
+    await expect(continueDeclaration).toBeEnabled();
+    await expect(
+      panel.getByRole("button", { name: /^Velg på nytt/ })
+    ).toBeEnabled();
+
+    // The forms are not offered again while a declaration is in progress.
+    await expect(
+      panel.getByRole("button", { name: "Velg privat skifte" })
+    ).toHaveCount(0);
+    return;
+  }
+
   // "Dødsbo av liten verdi" is called "Bo av liten verdi" on this tab.
   for (const probateForm of [
     "Uskifte",

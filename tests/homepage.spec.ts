@@ -18,7 +18,9 @@ test("has heading with the name of the deceased", async ({ page }) => {
     name: deceasedName,
     level: 1,
   });
-  await expect(heading).toBeVisible();
+  // The name is fetched after load, so the heading can take longer to appear
+  // than the default 5s expect timeout allows on a slow tt02.
+  await expect(heading).toBeVisible({ timeout: 15000 });
 });
 
 test.skip("has the name of the logged-in heir", async ({ page }) => {

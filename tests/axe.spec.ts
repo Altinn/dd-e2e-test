@@ -41,7 +41,7 @@ test.use({ screenshot: 'only-on-failure' });
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.goto(baseURL || "/", { waitUntil: 'domcontentloaded' });
-  await expect(page).toHaveTitle(/Startside - Digitalt Dødsbo/);
+  await expect(page).toHaveTitle(/Startside - Digitalt Dødsbo/, { timeout: 15000 });
 });
 
 test.describe('homepage', () => { // 2

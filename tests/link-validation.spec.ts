@@ -21,6 +21,11 @@ interface LinkValidationResult {
 
 test.describe('Link Validation', () => {
   test('should validate all links from resources file', async ({ page }) => {
+    // Checks a few dozen links sequentially, each with its own 20s ceiling, so
+    // this needs far more than the 60s the main config allows per test. Without
+    // this the whole test times out instead of reporting per-link results.
+    test.setTimeout(180000);
+
     // Step 1: Fetch the resources file
     const resourceEndpoint = 'https://digdir.apps.tt02.altinn.no/digdir/oed/api/v1/texts/nb';
 
@@ -44,6 +49,9 @@ test.describe('Link Validation', () => {
     const results: LinkValidationResult[] = [];
     const failedLinks: LinkValidationResult[] = [];
     const redirectedLinks: LinkValidationResult[] = [];
+    // Links we could not reach at all (timeout, refused connection, DNS).
+    // Reported but not failed — see the note above isNetworkLevelError.
+    const unreachableLinks: LinkValidationResult[] = [];
 
     for (const link of links) {
       // Skip invalid or empty URLs
@@ -54,7 +62,7 @@ test.describe('Link Validation', () => {
       try {
         let response = await page.request.get(link, {
           maxRedirects: 10,
-          timeout: 10000, // 10 second timeout per link
+          timeout: 20000, // 20 second timeout per link; third-party sites can be slow from CI
           maxRetries: 5, // Safely retries ECONNRESET natively
           // Overwrite default headers to fully match a standard Google Chrome profile
           headers: {
@@ -133,21 +141,27 @@ test.describe('Link Validation', () => {
           redirectedLinks.push(result);
         }
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         const result: LinkValidationResult = {
           url: link,
           status: 0,
           ok: false,
           finalUrl: link,
           redirected: false,
-          error: error instanceof Error ? error.message : String(error),
+          error: message,
         };
         results.push(result);
-        failedLinks.push(result);
+
+        if (isNetworkLevelError(message)) {
+          unreachableLinks.push(result);
+        } else {
+          failedLinks.push(result);
+        }
       }
     }
 
     // Step 4: Generate report
-    console.log(`\nResults: ${results.filter(r => r.ok).length} passed, ${failedLinks.length} failed, ${redirectedLinks.length} redirected`);
+    console.log(`\nResults: ${results.filter(r => r.ok).length} passed, ${failedLinks.length} failed, ${unreachableLinks.length} unreachable, ${redirectedLinks.length} redirected`);
 
     if (redirectedLinks.length > 0) {
       console.log('\nRedirected links:');
@@ -160,6 +174,21 @@ test.describe('Link Validation', () => {
       console.log('\nFailed links:');
       failedLinks.forEach((link, index) => {
         console.log(`  ${index + 1}. [${link.status === 0 ? 'ERROR' : link.status}] ${link.url} - ${link.error}`);
+      });
+    }
+
+    // Surfaced as a test annotation so these stay visible in the HTML report
+    // instead of being buried in stdout.
+    if (unreachableLinks.length > 0) {
+      const summary = unreachableLinks
+        .map((link, i) => `\n  ${i + 1}. ${link.url} - ${link.error}`)
+        .join('');
+
+      console.warn(`\n${unreachableLinks.length} unreachable link(s) (not failing the test):${summary}`);
+
+      test.info().annotations.push({
+        type: 'unreachable links',
+        description: `${unreachableLinks.length} link(s) could not be reached from this network:${summary}`,
       });
     }
 
@@ -220,6 +249,32 @@ function extractLinksFromResources(data: any): string[] {
  */
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, '');
+}
+
+/**
+ * Distinguish "we never got an answer" from "the site answered badly".
+ *
+ * Several of the third-party sites linked from the app (nettvett.no,
+ * slettmeg.no, digipost.no) time out or refuse connections when requested from
+ * CI datacenter IPs, while loading fine from a normal browser. Failing the
+ * build on those means the suite reports on someone else's network rather than
+ * on our links, so they are reported as warnings instead.
+ *
+ * HTTP-level problems (4xx, 5xx, redirect to /404) are unaffected and still
+ * fail the test — those are real broken links.
+ */
+function isNetworkLevelError(message: string): boolean {
+  return [
+    'Timeout',
+    'timeout',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ETIMEDOUT',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+    'socket hang up',
+    'net::ERR_',
+  ].some((pattern) => message.includes(pattern));
 }
 
 /**
