@@ -87,6 +87,7 @@ jobs:
       passed: ${{ steps.stats.outputs.passed }}
       failed: ${{ steps.stats.outputs.failed }}
       flaky: ${{ steps.stats.outputs.flaky }}
+      failed_tests: ${{ steps.stats.outputs.failed_tests }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -164,7 +165,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "🔴 Playwright Tests V2 failed — ${{ github.repository }} (${{ github.ref_name }})",
+              "text": "🔴 Playwright Tests V2 failed — run #${{ github.run_number }}",
               "blocks": [
                 {
                   "type": "header",
@@ -173,11 +174,13 @@ jobs:
                 {
                   "type": "section",
                   "fields": [
-                    { "type": "mrkdwn", "text": "*Repo*\n${{ github.repository }}" },
-                    { "type": "mrkdwn", "text": "*Branch*\n${{ github.ref_name }}" },
                     { "type": "mrkdwn", "text": "*Run*\n#${{ github.run_number }} (${{ github.event_name }})" },
                     { "type": "mrkdwn", "text": "*Results*\n${{ steps.summary.outputs.line }}" }
                   ]
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Failed tests*\n${{ needs.merge-report.outputs.failed_tests }}" }
                 },
                 {
                   "type": "actions",
