@@ -2,8 +2,13 @@ name: Playwright Tests V2
 
 on:
   schedule:
-    - cron: '0 3 * * *' 
+    - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      force_notify:
+        description: 'Post to Slack even if nothing failed, to check the message'
+        type: boolean
+        default: false
 
 # Cancel superseded runs on the same ref to save minutes.
 concurrency:
@@ -125,8 +130,9 @@ jobs:
   notify-slack:
     name: Notify Slack
     needs: [test, merge-report]
-    # Fire on a genuine failure only — not when the run was cancelled.
-    if: ${{ !cancelled() && (needs.test.result == 'failure' || needs.merge-report.result == 'failure') }}
+    # Fire on a genuine failure — not when the run was cancelled — or when
+    # dispatched with force_notify to check the message itself.
+    if: ${{ !cancelled() && (needs.test.result == 'failure' || needs.merge-report.result == 'failure' || inputs.force_notify) }}
     runs-on: ubuntu-latest
     env:
       # `secrets` is not available in `if:`, so it is mapped here and the
@@ -150,11 +156,24 @@ jobs:
           PASSED: ${{ needs.merge-report.outputs.passed }}
           FAILED: ${{ needs.merge-report.outputs.failed }}
           FLAKY: ${{ needs.merge-report.outputs.flaky }}
+          TEST_RESULT: ${{ needs.test.result }}
+          MERGE_RESULT: ${{ needs.merge-report.result }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
           if [ "$AVAILABLE" = "true" ]; then
             echo "line=*${PASSED}* passed · *${FAILED}* failed · *${FLAKY}* flaky" >> "$GITHUB_OUTPUT"
           else
             echo "line=_Result counts unavailable — the report merge did not complete._" >> "$GITHUB_OUTPUT"
+          fi
+
+          # A forced notification on a green run must not look like a real
+          # alert, or someone will go chasing a failure that never happened.
+          if [ "$TEST_RESULT" = "failure" ] || [ "$MERGE_RESULT" = "failure" ]; then
+            echo "header=🔴 Playwright Tests V2 — FAILED" >> "$GITHUB_OUTPUT"
+            echo "fallback=🔴 Playwright Tests V2 failed — run #${RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          else
+            echo "header=🧪 Playwright Tests V2 — test notification" >> "$GITHUB_OUTPUT"
+            echo "fallback=🧪 Playwright Tests V2 test notification — run #${RUN_NUMBER}, nothing failed" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Send Slack notification
@@ -165,11 +184,11 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "🔴 Playwright Tests V2 failed — run #${{ github.run_number }}",
+              "text": "${{ steps.summary.outputs.fallback }}",
               "blocks": [
                 {
                   "type": "header",
-                  "text": { "type": "plain_text", "text": "🔴 Playwright Tests V2 — FAILED" }
+                  "text": { "type": "plain_text", "text": "${{ steps.summary.outputs.header }}" }
                 },
                 {
                   "type": "section",
