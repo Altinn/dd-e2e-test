@@ -92,7 +92,7 @@ jobs:
       passed: ${{ steps.stats.outputs.passed }}
       failed: ${{ steps.stats.outputs.failed }}
       flaky: ${{ steps.stats.outputs.flaky }}
-      failed_tests: ${{ steps.stats.outputs.failed_tests }}
+      failures: ${{ steps.stats.outputs.failures }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -156,6 +156,7 @@ jobs:
           PASSED: ${{ needs.merge-report.outputs.passed }}
           FAILED: ${{ needs.merge-report.outputs.failed }}
           FLAKY: ${{ needs.merge-report.outputs.flaky }}
+          FAILURES: ${{ needs.merge-report.outputs.failures }}
           TEST_RESULT: ${{ needs.test.result }}
           MERGE_RESULT: ${{ needs.merge-report.result }}
           RUN_NUMBER: ${{ github.run_number }}
@@ -165,6 +166,13 @@ jobs:
           else
             echo "line=_Result counts unavailable — the report merge did not complete._" >> "$GITHUB_OUTPUT"
           fi
+
+          # Slack rejects a section with empty text, so this must never be blank
+          # — and it is blank whenever the merge job failed before the stats step.
+          if [ -z "$FAILURES" ]; then
+            FAILURES="_No details available — the report merge did not complete, so there is nothing to read the errors from. See the run log._"
+          fi
+          printf '%s\n' "failures=${FAILURES}" >> "$GITHUB_OUTPUT"
 
           # A forced notification on a green run must not look like a real
           # alert, or someone will go chasing a failure that never happened.
@@ -199,7 +207,7 @@ jobs:
                 },
                 {
                   "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Failed tests*\n${{ needs.merge-report.outputs.failed_tests }}" }
+                  "text": { "type": "mrkdwn", "text": "${{ steps.summary.outputs.failures }}" }
                 },
                 {
                   "type": "actions",
