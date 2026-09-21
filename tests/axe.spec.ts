@@ -103,24 +103,15 @@ test.describe('checklist page', () => { // 2
   });
 
   test('should not have any automatically detectable accessibility issues', async ({ page }) => {
-    // The "label" rule is checked by the test below, where the missing labels
-    // on the checkboxes are a known issue.
-    const knownIssues = ['label'];
-
     // The points of the checklist are expanded when the page opens, so scan
     // first as loaded, then again after toggling every point and question.
-    await runAxeScan(page, knownIssues);
+    await runAxeScan(page);
 
     await clickAllButtonsInGroup(page);
-    await runAxeScan(page, knownIssues);
+    await runAxeScan(page);
   });
 
   test('the checkbox for marking a point as done should have an accessible name', async ({ page }) => {
-    // Known issue: none of the checkboxes have a label, an aria-label or an
-    // aria-labelledby, so screen reader users are not told which point they
-    // are marking. Remove test.fail() when the app labels them.
-    test.fail();
-
     await runAxeScanForRules(page, ['label']);
   });
 });
