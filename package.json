@@ -11,6 +11,6 @@
     "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.53.2",
     "@types/node": "^24.0.10",
-    "dotenv": "^17.0.1"
+    "dotenv": "^18.0.0"
   }
 }
