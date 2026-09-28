@@ -97,6 +97,7 @@ test.describe('Link Validation', () => {
                 status: () => pageResponse.status(),
                 ok: () => pageResponse.ok(),
                 url: () => pageResponse.url(),
+                headers: () => pageResponse.headers(),
               } as any;
             }
           } catch (navError) {
@@ -118,7 +119,13 @@ test.describe('Link Validation', () => {
         // Check if URL contains /404 (indicates redirect to 404 page)
         const is404Page = result.finalUrl.includes('/404');
 
-        if (!response.ok()) {
+        if (isBotChallenge(response)) {
+          // Blocked by bot protection from CI, not a broken link.
+          // Reported as unreachable — see the note above isBotChallenge.
+          result.error = 'Blocked by bot protection (Cloudflare challenge)';
+          result.ok = false;
+          unreachableLinks.push(result);
+        } else if (!response.ok()) {
           // Provide specific error messages based on status code
           const statusMessages: { [key: number]: string } = {
             400: 'Bad Request',
@@ -275,6 +282,20 @@ function isNetworkLevelError(message: string): boolean {
     'socket hang up',
     'net::ERR_',
   ].some((pattern) => message.includes(pattern));
+}
+
+/**
+ * Detect a bot-protection challenge rather than a real 403.
+ *
+ * Some linked sites (e.g. the e-Boks Zendesk help center) sit behind
+ * Cloudflare, which answers requests from CI datacenter IPs with a 403
+ * challenge, even for real browser navigation. Cloudflare marks these
+ * responses with `cf-mitigated: challenge`, so they are reported as
+ * unreachable instead of failing the build. A 403 without that header
+ * still fails.
+ */
+function isBotChallenge(response: { status(): number; headers(): Record<string, string> }): boolean {
+  return response.status() === 403 && response.headers()['cf-mitigated'] === 'challenge';
 }
 
 /**
