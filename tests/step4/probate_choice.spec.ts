@@ -22,12 +22,12 @@ const tabs = [
   },
   {
     name: "Alles valg",
-    heading: "Hvilken skifteform ønsker arvingene?",
+    heading: "Alle arvingenes valg",
     slug: "all-choices",
   },
   {
     name: "Ditt valg",
-    heading: "Er du klar til å velge skifteform?",
+    heading: "Velg én skifteform",
     slug: "your-choice",
   },
 ];

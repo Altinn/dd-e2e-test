@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * Step 3 on the front page: "Bruk din egen sjekkliste".
@@ -43,25 +43,25 @@ const pointLinks = [
     tab: "Arvinger",
   },
   {
-    linkName: "Sjekk ektepakter",
+    linkName: "Sjekk ektepakt",
     title: /den dødes opplysninger/i,
     tab: "Ektepakt",
   },
   {
-    linkName: "Sjekk testamentopplysninger",
+    linkName: "Sjekk testament",
     title: /den dødes opplysninger/i,
     tab: "Testament",
   },
   {
-    linkName: "Sjekk skatteopplysninger",
+    linkName: "Sjekk skatt",
     title: /Formue og gjeld/i,
     tab: "Skatt",
   },
-  { linkName: "Sjekk eiendommer", title: /Formue og gjeld/i, tab: "Eiendom" },
+  { linkName: "Sjekk eiendom", title: /Formue og gjeld/i, tab: "Eiendom" },
   { linkName: "Sjekk kjøretøy", title: /Formue og gjeld/i, tab: "Kjøretøy" },
   { linkName: "Sjekk bank", title: /Formue og gjeld/i, tab: "Bank" },
   {
-    linkName: "Sjekk livs- og pensjonforsikring",
+    linkName: "Sjekk pensjon",
     title: /Formue og gjeld/i,
     tab: "Forsikring",
   },
@@ -76,6 +76,21 @@ const checklistPoint = (page: Page, title: string) =>
     .getByRole("listitem")
     .filter({ has: page.getByRole("button", { name: title, exact: true }) });
 
+/**
+ * Marks or unmarks a point and waits until the change has been saved, so a
+ * reload right after does not show the state from before the change.
+ */
+const setMark = async (page: Page, checkbox: Locator, checked: boolean) => {
+  if ((await checkbox.isChecked()) === checked) return;
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PUT" &&
+      response.url().includes("/checklist/")
+  );
+  await checkbox.setChecked(checked);
+  expect((await saved).ok()).toBe(true);
+};
+
 test.beforeEach(async ({ page, baseURL }) => {
   await page.goto(baseURL || "/");
   await page.getByRole("button", { name: "Bruk din egen sjekkliste" }).click();
@@ -87,7 +102,7 @@ test("has title", async ({ page }) => {
 
 test("has heading with the purpose of the checklist", async ({ page }) => {
   const heading = page.getByRole("heading", {
-    name: "Sjekk at du har informasjonen du trenger",
+    name: "Sjekk at du har oversikt",
     level: 1,
   });
   await expect(heading).toBeVisible();
@@ -112,9 +127,13 @@ test("a point that is marked as done stays marked", async ({ page }) => {
   // with the other tests running in parallel.
   const proklama = checklistPoint(page, "Proklama").getByRole("checkbox");
 
+  // The checkboxes are shown disabled and unchecked until the stored marks
+  // have loaded, so wait for that before reading or changing the state.
+  await expect(proklama).toBeEnabled();
+
   // The marks are stored per heir, so start from a known state.
-  await proklama.uncheck();
-  await proklama.check();
+  await setMark(page, proklama, false);
+  await setMark(page, proklama, true);
   await expect(proklama).toBeChecked();
 
   await page.reload();
@@ -122,10 +141,11 @@ test("a point that is marked as done stays marked", async ({ page }) => {
   const proklamaAfterReload = checklistPoint(page, "Proklama").getByRole(
     "checkbox"
   );
+  await expect(proklamaAfterReload).toBeEnabled();
   await expect(proklamaAfterReload).toBeChecked();
 
   // Leave the checklist as it was found.
-  await proklamaAfterReload.uncheck();
+  await setMark(page, proklamaAfterReload, false);
   await expect(proklamaAfterReload).not.toBeChecked();
 });
 
