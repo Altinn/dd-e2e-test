@@ -309,10 +309,11 @@ test("the heir fills in, signs and submits the declaration", async ({
     await choose.click();
   }
 
+  // The form is a separate app, which can take a while to open a new form.
   const main = page.getByRole("main");
   await expect(
     main.getByRole("heading", { name: "Privat skifte av dødsbo", level: 1 })
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 30_000 });
 
   for (const formPage of formPages) {
     await expect(
@@ -413,9 +414,25 @@ test("the heir fills in, signs and submits the declaration", async ({
       .textContent())!.trim();
 
   expectDeclarationToContain(declaration, "Erklæring om privat skifte");
-  for (const label of ["Dato sendt", "Avsender", "Mottaker", "Referansenummer"]) {
+  for (const label of ["Avsender", "Mottaker", "Referansenummer"]) {
     expectDeclarationToContain(declaration, label, await receipt(label));
   }
+  // The declaration is stamped when it is made, a moment before the receipt,
+  // so the two times can be a minute or so apart.
+  const sentAt = (text: string) => {
+    const [, day, month, year, hour, minute] = text.match(
+      /(\d{2})\.(\d{2})\.(\d{4})\s*\/\s*(\d{2}):(\d{2})/
+    )!;
+    return new Date(+year, +month - 1, +day, +hour, +minute).getTime();
+  };
+  const declarationSentAt = restoreL(declaration).match(
+    /Dato sendt:?\s*(\d{2}\.\d{2}\.\d{4}\s*\/\s*\d{2}:\d{2})/
+  );
+  expect(declarationSentAt, "the declaration says when it was sent").not.toBeNull();
+  expect(
+    Math.abs(sentAt(declarationSentAt![1]) - sentAt(await receipt("Dato sendt"))),
+    "milliseconds between the time in the declaration and on the receipt"
+  ).toBeLessThanOrEqual(2 * 60_000);
   expectDeclarationToContain(declaration, "Dødsboet etter", deceasedName.trim());
   for (const formPage of formPages) {
     expectDeclarationToContain(
