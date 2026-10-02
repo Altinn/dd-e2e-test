@@ -10,9 +10,10 @@
 // Two distinct kinds of failure have to be reported, because Playwright records
 // them in different places:
 //
-//   - a test failed                  → spec.tests[].results[].error
+//   - a test failed                  → its spec, listed by name only; the
+//     error is in the HTML report the message links to
 //   - the run failed outside any test → the report's top-level `errors`
-//     (globalSetup, config load, worker crash)
+//     (globalSetup, config load, worker crash), as the first line of each
 //
 // Only the first was read before, so when the login flow in globalSetup timed
 // out the message said "0 passed · 0 failed · 0 flaky" and carried no error at
@@ -23,7 +24,7 @@ const fs = require("fs");
 // Slack section text tops out at 3000 characters, and a wall of failures is not
 // readable anyway, so the output is capped several ways.
 const MAX_LISTED = 8;
-const MAX_ERROR_LINES = 3;
+const MAX_ERROR_LINES = 1;
 const MAX_ERROR_CHARS = 240;
 const MAX_TOTAL_CHARS = 2500;
 
@@ -79,10 +80,10 @@ const relative = (path) => {
 };
 
 /**
- * The opening lines of an error message, which is where Playwright puts the
- * reason: the message itself, then either `Expected:`/`Received:` or the head
- * of a call log. Everything after that is stack and source-snippet noise that
- * belongs in the HTML report rather than in a Slack alert.
+ * The first line of an error message, which is where Playwright puts the
+ * reason. Everything after it, from expected and received values to the call
+ * log, stack and source snippet, belongs in the HTML report rather than in a
+ * Slack alert.
  */
 const summarise = (error) => {
   const lines = clean(error?.message ?? "")
@@ -110,21 +111,10 @@ const quote = (text) =>
     .map((line) => `> ${line}`)
     .join("\n");
 
-/** The error a failed test ended on, i.e. from its last attempt that has one. */
-const errorFor = (test) => {
-  const results = test.results ?? [];
-  for (let i = results.length - 1; i >= 0; i -= 1) {
-    const error = results[i].error ?? (results[i].errors ?? [])[0];
-    if (error?.message) {
-      return error;
-    }
-  }
-  return null;
-};
-
 /**
- * Collect every spec that ended up failing, as "file:line — describe › title"
- * plus the error it failed with.
+ * Collect every spec that ended up failing, as "file:line — describe › title".
+ * The error itself, with its expected and received values and the code around
+ * it, is left to the HTML report the message links to.
  *
  * Suites nest: each entry in the report's top-level `suites` is a spec file,
  * and anything below it is a describe block. The file contributes the path
@@ -139,10 +129,7 @@ const walkSuite = (suite, titlePath) => {
     );
     if (failed.length > 0) {
       const name = [...titlePath, spec.title].join(" › ");
-      failures.push({
-        name: `${spec.file}:${spec.line} — ${name}`,
-        error: failed.map(errorFor).find(Boolean) ?? null,
-      });
+      failures.push(`${spec.file}:${spec.line} — ${name}`);
     }
   }
 
@@ -184,10 +171,9 @@ const describeFailures = (specFailures, runErrors) => {
   const parts = [];
 
   if (specFailures.length > 0) {
-    const listed = specFailures.slice(0, MAX_LISTED).map(({ name, error }) => {
-      const summary = error ? summarise(error) : "";
-      return summary ? `• ${name}\n${quote(summary)}` : `• ${name}`;
-    });
+    const listed = specFailures
+      .slice(0, MAX_LISTED)
+      .map((name) => `• ${name}`);
 
     const remaining = specFailures.length - listed.length;
     if (remaining > 0) {

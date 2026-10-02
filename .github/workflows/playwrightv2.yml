@@ -130,9 +130,48 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
+  # A failed run's report is published to GitHub Pages, so the Slack message can
+  # link straight to it instead of to an artifact that has to be downloaded.
+  # Each publish replaces the previous one, so the page shows the latest failure.
+  publish-report:
+    name: Publish report
+    needs: [test, merge-report]
+    if: ${{ !cancelled() && needs.merge-report.result == 'success' && (needs.test.result == 'failure' || inputs.force_notify) }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    outputs:
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download HTML report
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: playwright-report
+          path: playwright-report
+
+      # The site is public. Traces record the heirs' logged-in requests,
+      # session cookies included, so they stay in the run's artifacts only.
+      - name: Leave out traces
+        run: find playwright-report -name '*.zip' -print -delete
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: playwright-report
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
   notify-slack:
     name: Notify Slack
-    needs: [test, merge-report]
+    needs: [test, merge-report, publish-report]
     # Fire on a genuine failure — not when the run was cancelled — or when
     # dispatched with force_notify to check the message itself.
     if: ${{ !cancelled() && (needs.test.result == 'failure' || needs.merge-report.result == 'failure' || inputs.force_notify) }}
@@ -163,7 +202,18 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
           MERGE_RESULT: ${{ needs.merge-report.result }}
           RUN_NUMBER: ${{ github.run_number }}
+          REPORT_URL: ${{ needs.publish-report.outputs.url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          # Link to the published report when there is one; the run is linked
+          # either way, for the log and the traces.
+          RUN_BUTTON="{ \"type\": \"button\", \"text\": { \"type\": \"plain_text\", \"text\": \"View run\" }, \"url\": \"${RUN_URL}\" }"
+          if [ -n "$REPORT_URL" ]; then
+            echo "buttons=[{ \"type\": \"button\", \"text\": { \"type\": \"plain_text\", \"text\": \"Open report\" }, \"url\": \"${REPORT_URL}\", \"style\": \"danger\" }, ${RUN_BUTTON}]" >> "$GITHUB_OUTPUT"
+          else
+            echo "buttons=[${RUN_BUTTON}]" >> "$GITHUB_OUTPUT"
+          fi
+
           if [ "$AVAILABLE" = "true" ]; then
             echo "line=*${PASSED}* passed · *${FAILED}* failed · *${FLAKY}* flaky" >> "$GITHUB_OUTPUT"
           else
@@ -214,14 +264,7 @@ jobs:
                 },
                 {
                   "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": { "type": "plain_text", "text": "View run & download report" },
-                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                      "style": "danger"
-                    }
-                  ]
+                  "elements": ${{ steps.summary.outputs.buttons }}
                 }
               ]
             }
