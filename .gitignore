@@ -40,3 +40,8 @@ storageState*.json
 
 # Docker compose source code
 infra/services
+
+# Plain HTML report from playwright.merge.config.ts
+plain-report/
+blob-report/
+merged-report.json
