@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import type {
@@ -16,6 +17,11 @@ import type {
  * This is the page published to GitHub Pages. It only holds what is written
  * here, so traces and page snapshots, which carry the heirs' sessions and
  * data, stay in Playwright's own HTML report in the run's artifacts.
+ *
+ * Next to the page it writes screenshots.json, which lists the last screenshot
+ * of each failed test for the Slack message to show (see report-stats.js).
+ * Screenshots are named after their content, so Slack, which caches images by
+ * address, never shows an old screenshot under a reused name.
  *
  * Used by `playwright merge-reports`; see playwright.merge.config.ts.
  */
@@ -75,7 +81,7 @@ class PlainHtmlReporter implements Reporter {
       byFile.set(file, [...(byFile.get(file) ?? []), test]);
     }
 
-    let screenshotCount = 0;
+    const failedScreenshots: { test: string; path: string }[] = [];
     const details = (test: TestCase) => {
       const parts: string[] = [];
       for (const annotation of test.annotations) {
@@ -107,11 +113,23 @@ class PlainHtmlReporter implements Reporter {
           ) {
             continue;
           }
-          screenshotCount += 1;
-          const name = `screenshots/${screenshotCount}${path.extname(
-            attachment.path
-          )}`;
-          fs.copyFileSync(attachment.path, path.join(this.outputFolder, name));
+          const content = fs.readFileSync(attachment.path);
+          const name = `screenshots/${crypto
+            .createHash("sha256")
+            .update(content)
+            .digest("hex")
+            .slice(0, 16)}${path.extname(attachment.path)}`;
+          fs.writeFileSync(path.join(this.outputFolder, name), content);
+          if (test.outcome() === "unexpected") {
+            const testName = `${test.titlePath()[2]} — ${test
+              .titlePath()
+              .slice(3)
+              .join(" › ")}`;
+            // Later attempts replace earlier ones, so the last one is kept.
+            const existing = failedScreenshots.find((entry) => entry.test === testName);
+            if (existing) existing.path = name;
+            else failedScreenshots.push({ test: testName, path: name });
+          }
           parts.push(
             `<p><a href="${name}"><img src="${name}" alt="${escapeHtml(
               `${label}${attachment.name}`
@@ -178,6 +196,10 @@ ${sections.join("\n")}
 </html>
 `;
     fs.writeFileSync(path.join(this.outputFolder, "index.html"), html);
+    fs.writeFileSync(
+      path.join(this.outputFolder, "screenshots.json"),
+      JSON.stringify(failedScreenshots)
+    );
   }
 }
 

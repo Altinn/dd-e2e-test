@@ -1,6 +1,7 @@
 // Reads Playwright's merged JSON report and writes counts plus a description of
 // what actually went wrong as GitHub Actions step outputs (key=value lines on
-// stdout, redirected to $GITHUB_OUTPUT).
+// stdout, redirected to $GITHUB_OUTPUT). An optional second argument is the
+// plain report's screenshots.json, passed on as the `screenshots` output.
 //
 // Written defensively: a failure to read or parse the report must not fail the
 // notification step, since the whole point is to report on a run that already
@@ -10,8 +11,8 @@
 // Two distinct kinds of failure have to be reported, because Playwright records
 // them in different places:
 //
-//   - a test failed                  → its spec, listed by name only; the
-//     error is in the HTML report the message links to
+//   - a test failed                  → its spec, by name, with the first
+//     line of its error; the rest is in the report the message links to
 //   - the run failed outside any test → the report's top-level `errors`
 //     (globalSetup, config load, worker crash), as the first line of each
 //
@@ -111,10 +112,23 @@ const quote = (text) =>
     .map((line) => `> ${line}`)
     .join("\n");
 
+/** The error a failed test ended on, i.e. from its last attempt that has one. */
+const errorFor = (test) => {
+  const results = test.results ?? [];
+  for (let i = results.length - 1; i >= 0; i -= 1) {
+    const error = results[i].error ?? (results[i].errors ?? [])[0];
+    if (error?.message) {
+      return error;
+    }
+  }
+  return null;
+};
+
 /**
- * Collect every spec that ended up failing, as "file:line — describe › title".
- * The error itself, with its expected and received values and the code around
- * it, is left to the HTML report the message links to.
+ * Collect every spec that ended up failing, as "file:line — describe › title"
+ * plus the error it failed with. Only the first line of the error is shown;
+ * the expected and received values and the code around it are left to the
+ * report the message links to.
  *
  * Suites nest: each entry in the report's top-level `suites` is a spec file,
  * and anything below it is a describe block. The file contributes the path
@@ -129,7 +143,10 @@ const walkSuite = (suite, titlePath) => {
     );
     if (failed.length > 0) {
       const name = [...titlePath, spec.title].join(" › ");
-      failures.push(`${spec.file}:${spec.line} — ${name}`);
+      failures.push({
+        name: `${spec.file}:${spec.line} — ${name}`,
+        error: failed.map(errorFor).find(Boolean) ?? null,
+      });
     }
   }
 
@@ -171,9 +188,11 @@ const describeFailures = (specFailures, runErrors) => {
   const parts = [];
 
   if (specFailures.length > 0) {
-    const listed = specFailures
-      .slice(0, MAX_LISTED)
-      .map((name) => `• ${name}`);
+    const listed = specFailures.slice(0, MAX_LISTED).map(({ name, error }) => {
+      const reason = error ? summarise(error) : "";
+      return reason ? `• ${name}
+${quote(reason)}` : `• ${name}`;
+    });
 
     const remaining = specFailures.length - listed.length;
     if (remaining > 0) {
@@ -209,6 +228,23 @@ const forJson = (text) =>
     .replace(/"/g, '\\"')
     .replace(/\n/g, "\\n");
 
+// The plain report's list of failed tests' screenshots, if it was given and
+// could be read. The Slack message shows a few of them as images.
+const MAX_SCREENSHOTS = 5;
+let screenshots = [];
+if (process.argv[3]) {
+  try {
+    screenshots = JSON.parse(fs.readFileSync(process.argv[3], "utf8")).slice(
+      0,
+      MAX_SCREENSHOTS
+    );
+  } catch (error) {
+    console.error(
+      `Could not read screenshots from ${process.argv[3]}: ${error.message}`
+    );
+  }
+}
+
 const stats = report?.stats;
 const outputs = stats
   ? {
@@ -234,6 +270,9 @@ const outputs = stats
         "_The report could not be read, so there are no details to show. See the run log._"
       ),
     };
+
+// One line of JSON, for the workflow to turn into Slack image blocks.
+outputs.screenshots = JSON.stringify(screenshots);
 
 for (const [key, value] of Object.entries(outputs)) {
   console.log(`${key}=${value}`);

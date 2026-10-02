@@ -97,6 +97,7 @@ jobs:
       failed: ${{ steps.stats.outputs.failed }}
       flaky: ${{ steps.stats.outputs.flaky }}
       failures: ${{ steps.stats.outputs.failures }}
+      screenshots: ${{ steps.stats.outputs.screenshots }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -122,7 +123,7 @@ jobs:
 
       - name: Extract result counts
         id: stats
-        run: node .github/scripts/report-stats.js merged-report.json >> "$GITHUB_OUTPUT"
+        run: node .github/scripts/report-stats.js merged-report.json plain-report/screenshots.json >> "$GITHUB_OUTPUT"
 
       - name: Upload HTML report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -209,6 +210,7 @@ jobs:
           MERGE_RESULT: ${{ needs.merge-report.result }}
           RUN_NUMBER: ${{ github.run_number }}
           REPORT_URL: ${{ needs.publish-report.outputs.url }}
+          SCREENSHOTS: ${{ needs.merge-report.outputs.screenshots }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # Link to the published report when there is one; the run is linked
@@ -219,6 +221,22 @@ jobs:
           else
             echo "buttons=[${RUN_BUTTON}]" >> "$GITHUB_OUTPUT"
           fi
+
+          # The failed tests' screenshots are on the published report, where
+          # Slack can fetch them. Each block is preceded by a comma so the list
+          # can follow the failures section in the payload, or be empty.
+          IMAGES=""
+          if [ -n "$REPORT_URL" ] && [ -n "$SCREENSHOTS" ]; then
+            # -j joins the blocks without newlines, which would end the output.
+            IMAGES=$(jq -j --arg base "${REPORT_URL%/}/" '
+              .[] | {
+                type: "image",
+                image_url: ($base + .path),
+                alt_text: ("Screenshot: " + .test)[:2000],
+                title: { type: "plain_text", text: .test[:2000] }
+              } | "," + tojson' <<< "$SCREENSHOTS") || IMAGES=""
+          fi
+          echo "images=${IMAGES}" >> "$GITHUB_OUTPUT"
 
           if [ "$AVAILABLE" = "true" ]; then
             echo "line=*${PASSED}* passed · *${FAILED}* failed · *${FLAKY}* flaky" >> "$GITHUB_OUTPUT"
@@ -267,7 +285,7 @@ jobs:
                 {
                   "type": "section",
                   "text": { "type": "mrkdwn", "text": "${{ steps.summary.outputs.failures }}" }
-                },
+                }${{ steps.summary.outputs.images }},
                 {
                   "type": "actions",
                   "elements": ${{ steps.summary.outputs.buttons }}
