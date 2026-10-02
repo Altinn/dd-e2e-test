@@ -36,7 +36,7 @@ coverage/
 jest-*
 
 # Optional: if using Type
-storageState.json
+storageState*.json
 
 # Docker compose source code
 infra/services

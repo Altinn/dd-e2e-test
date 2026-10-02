@@ -144,19 +144,39 @@ test("the ditt valg tab offers the probate forms the heir can choose", async ({
   await page.getByRole("tab", { name: "Ditt valg", exact: true }).click();
   const panel = page.locator(visiblePanel);
 
-  // The tab renders one of two states depending on the heir this run logs in
-  // as: either the probate forms are offered, or the heir has already started
-  // a declaration and is offered to continue it or start over. Waiting for
-  // whichever arrives first keeps the branch below from reading a panel that
-  // is still rendering.
+  // The tab renders one of three states depending on the heir this run logs
+  // in as: either the probate forms are offered, the heir has already saved a
+  // choice, or the heir has already started a declaration and is offered to
+  // continue it or start over. Waiting for whichever arrives first keeps the
+  // branches below from reading a panel that is still rendering.
   const continueDeclaration = panel.getByRole("button", {
     name: /^Fortsett utfylling/,
   });
+  const savedChoice = panel.getByRole("heading", { name: /^Du har valgt / });
   const firstProbateForm = panel.getByRole("heading", {
     name: "Uskifte",
     exact: true,
   });
-  await expect(continueDeclaration.or(firstProbateForm).first()).toBeVisible();
+  await expect(
+    continueDeclaration.or(savedChoice).or(firstProbateForm).first()
+  ).toBeVisible();
+
+  if (await savedChoice.isVisible()) {
+    // The choices themselves are tested in static_choices.spec.ts, which
+    // leaves the heir with a saved choice.
+    test.info().annotations.push({
+      type: "state",
+      description: "the heir has already saved a choice",
+    });
+
+    await expect(
+      panel.getByRole("button", { name: /^Velg på nytt/ })
+    ).toBeEnabled();
+    await expect(
+      panel.getByRole("button", { name: "Velg privat skifte" })
+    ).toHaveCount(0);
+    return;
+  }
 
   if (await continueDeclaration.isVisible()) {
     // A declaration is already in progress. The choice cannot be remade from
@@ -194,7 +214,8 @@ test("the ditt valg tab offers the probate forms the heir can choose", async ({
     ).toBeVisible();
   }
 
-  // Clicking one of these starts signing a declaration, so it is left alone.
+  // Choosing privat skifte starts signing a declaration, so these are left
+  // alone here. The other choices are tested in static_choices.spec.ts.
   for (const choice of [
     "Velg uskifte",
     "Velg privat skifte",
