@@ -23,6 +23,7 @@ jobs:
       DECEASED_NAME: ${{ vars.DECEASED_NAME }}
       HEIR_NAME: ${{ vars.HEIR_NAME }}
       HEIR_SSN: ${{ vars.HEIR_SSN }}
+      HEIR2_SSN: ${{ vars.HEIR2_SSN }}
       HEIR3_SSN: ${{ vars.HEIR3_SSN }}
       HEIR4_SSN: ${{ vars.HEIR4_SSN }}
     strategy:

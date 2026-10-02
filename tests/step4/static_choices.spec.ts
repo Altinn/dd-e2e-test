@@ -8,7 +8,8 @@ import { heirStorageState } from "../../global-setup";
  * other heirs can see it. Saving is not legally binding, so these tests do it.
  *
  * Each choice is made by its own heir, so the saved choices do not overwrite
- * each other. Privat skifte is digitalised and is not covered here.
+ * each other. Privat skifte is digitalised and is tested in
+ * private_probate.spec.ts.
  */
 const choices = [
   {
@@ -89,18 +90,30 @@ const openYourChoice = async (page: Page, baseURL: string | undefined) => {
 for (const choice of choices) {
   test.describe(choice.name, () => {
     test.use({ storageState: choice.storageState });
+    // Choosing again can delete the saved choice (see below), so the tests run
+    // one at a time, and the test that saves the choice runs last.
+    test.describe.configure({ mode: "serial" });
 
     test.beforeEach(async ({ page, baseURL }) => {
       const panel = await openYourChoice(page, baseURL);
 
       // The heir may have saved a choice in an earlier run, and then the tab
-      // shows that choice instead of the forms. "Velg på nytt" shows the forms
-      // again, and the saved choice is only replaced when a new one is saved.
+      // shows that choice instead of the forms. Before anyone in the estate
+      // has started a privat skifte declaration, "Velg på nytt" only shows the
+      // forms again. After that, it asks to confirm, and confirming deletes
+      // the saved choice.
       const chooseAgain = panel.getByRole("button", { name: /^Velg på nytt/ });
       const choiceButton = panel.getByRole("button", { name: choice.button });
       await expect(chooseAgain.or(choiceButton).first()).toBeVisible();
       if (await chooseAgain.isVisible()) {
         await chooseAgain.click();
+        const confirmDelete = panel.getByRole("button", {
+          name: "Ja, slett valg",
+        });
+        await expect(confirmDelete.or(choiceButton).first()).toBeVisible();
+        if (await confirmDelete.isVisible()) {
+          await confirmDelete.click();
+        }
       }
 
       await choiceButton.click();

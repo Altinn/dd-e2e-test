@@ -6,7 +6,7 @@ import { chromium, type Browser, type FullConfig } from "@playwright/test";
  * its session saved to its own file, so a test can act as that heir with
  * `test.use({ storageState: heirStorageState("HEIR3_SSN") })`.
  */
-export const otherHeirs = ["HEIR3_SSN", "HEIR4_SSN"];
+export const otherHeirs = ["HEIR2_SSN", "HEIR3_SSN", "HEIR4_SSN"];
 
 export const heirStorageState = (ssnVariable: string) =>
   `storageState.${ssnVariable.replace(/_SSN$/, "").toLowerCase()}.json`;
