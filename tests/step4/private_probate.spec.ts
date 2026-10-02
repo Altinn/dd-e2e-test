@@ -448,7 +448,16 @@ test("a signed declaration is shown to the heir and the other heirs", async ({
     throw new Error("DECEASED_NAME environment variable is not defined");
   }
 
-  const panel = await openYourChoice(page, baseURL);
+  // The receipt is made after the declaration is signed, and until it is
+  // ready the tab says "Vent litt mens kvitteringen lages." without a link.
+  test.setTimeout(180_000);
+  const panel = page.locator(visiblePanel);
+  await expect(async () => {
+    await openYourChoice(page, baseURL);
+    await expect(
+      panel.getByRole("link", { name: declarationLink })
+    ).toBeVisible({ timeout: 10_000 });
+  }).toPass({ timeout: 120_000 });
 
   await expect(
     panel.getByRole("heading", { name: signedChoice, level: 3 })

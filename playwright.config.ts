@@ -36,6 +36,10 @@ export default defineConfig({
     trace: "on-first-retry",
 
     storageState: "storageState.json",
+
+    /* The heirs are in Norway, and the server writes Norwegian times into the
+       documents it makes, so the browser shows times the same way. */
+    timezoneId: "Europe/Oslo",
   },
 
   /* Configure projects for major browsers */
