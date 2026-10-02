@@ -1,8 +1,9 @@
-name: Playwright Tests
+name: End-to-End Tests
+# Run Playwright end-to-end tests on a schedule and on demand, with Slack notifications for failures.
 
 on:
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       force_notify:
