@@ -196,6 +196,7 @@ test("the ditt valg tab offers the probate forms the heir can choose", async ({
 
   // Clicking one of these starts signing a declaration, so it is left alone.
   for (const choice of [
+    "Velg uskifte",
     "Velg privat skifte",
     "Velg bo av liten verdi",
     "Velg offentlig skifte",
@@ -203,12 +204,11 @@ test("the ditt valg tab offers the probate forms the heir can choose", async ({
     await expect(panel.getByRole("button", { name: choice })).toBeEnabled();
   }
 
+  // 2026-10-02: Test-heir is now the surviving spouse of the deceased, so Uskifte is offered. The test below is left commented out, because it is no longer true that Uskifte is only for the surviving spouse or partner, and the heir the tests log in as is not, so it is not offered as a choice.
   // Uskifte is only for the surviving spouse or partner, and the heir the
   // tests log in as is not, so it is not offered as a choice.
-  await expect(panel).toContainText("Bare for ektefelle/samboer");
-  await expect(panel.getByRole("button", { name: "Velg uskifte" })).toHaveCount(
-    0
-  );
+  // await expect(panel).toContainText("Bare for ektefelle/samboer");
+  // await expect(panel.getByRole("button", { name: "Velg uskifte" })).toHaveCount(0);
 });
 
 test("the breadcrumb leads back to the front page", async ({ page }) => {
