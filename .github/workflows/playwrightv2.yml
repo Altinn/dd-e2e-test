@@ -218,8 +218,13 @@ jobs:
           RUN_BUTTON="{ \"type\": \"button\", \"text\": { \"type\": \"plain_text\", \"text\": \"View run\" }, \"url\": \"${RUN_URL}\" }"
           if [ -n "$REPORT_URL" ]; then
             echo "buttons=[{ \"type\": \"button\", \"text\": { \"type\": \"plain_text\", \"text\": \"Open report\" }, \"url\": \"${REPORT_URL}\", \"style\": \"danger\" }, ${RUN_BUTTON}]" >> "$GITHUB_OUTPUT"
+            # The address itself too, so it can be seen and copied, e.g.
+            # <https://altinn.github.io/dd-e2e-test/|altinn.github.io/dd-e2e-test>
+            REPORT_TEXT="${REPORT_URL#https://}"
+            echo "report=<${REPORT_URL}|${REPORT_TEXT%/}>" >> "$GITHUB_OUTPUT"
           else
             echo "buttons=[${RUN_BUTTON}]" >> "$GITHUB_OUTPUT"
+            echo "report=_Not published, see the run_" >> "$GITHUB_OUTPUT"
           fi
 
           # The failed tests' screenshots are on the published report, where
@@ -279,7 +284,8 @@ jobs:
                   "type": "section",
                   "fields": [
                     { "type": "mrkdwn", "text": "*Run*\n#${{ github.run_number }} (${{ github.event_name }})" },
-                    { "type": "mrkdwn", "text": "*Results*\n${{ steps.summary.outputs.line }}" }
+                    { "type": "mrkdwn", "text": "*Results*\n${{ steps.summary.outputs.line }}" },
+                    { "type": "mrkdwn", "text": "*Report*\n${{ steps.summary.outputs.report }}" }
                   ]
                 },
                 {

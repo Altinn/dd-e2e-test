@@ -1,5 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
-import { heirAnnotation, heirName, heirs, heirTitle } from "../../heirs";
+import {
+  heirAnnotation,
+  heirName,
+  heirs,
+  heirTitle,
+  type Heir,
+} from "../../heirs";
 
 /**
  * The probate forms on the "Ditt valg" tab in step 4 that are not digitalised.
@@ -79,6 +85,15 @@ const choices = [
   },
 ];
 
+/** The static choice each heir switches to and back from. */
+const switchTo: Record<string, string> = {
+  Uskifte: "Offentlig skifte",
+  "Bo av liten verdi": "Offentlig skifte",
+  "Offentlig skifte": "Bo av liten verdi",
+};
+
+type Choice = (typeof choices)[number];
+
 // The visible tab panel; all other panels are hidden.
 const visiblePanel = "[role=tabpanel]:visible";
 
@@ -92,41 +107,89 @@ const openYourChoice = async (page: Page, baseURL: string | undefined) => {
   return page.locator(visiblePanel);
 };
 
+/**
+ * Opens the page of a static choice from the "Ditt valg" tab.
+ *
+ * The heir may have saved a choice in an earlier run, and then the tab shows
+ * that choice instead of the forms. Before anyone in the estate has started a
+ * privat skifte declaration, "Velg på nytt" only shows the forms again. After
+ * that, it asks to confirm, and confirming deletes the saved choice.
+ */
+const openChoicePage = async (
+  page: Page,
+  baseURL: string | undefined,
+  choice: Choice
+) => {
+  const panel = await openYourChoice(page, baseURL);
+  const chooseAgain = panel.getByRole("button", { name: /^Velg på nytt/ });
+  const choiceButton = panel.getByRole("button", { name: choice.button });
+  await expect(chooseAgain.or(choiceButton).first()).toBeVisible();
+  if (await chooseAgain.isVisible()) {
+    await chooseAgain.click();
+    const confirmDelete = panel.getByRole("button", {
+      name: "Ja, slett valg",
+    });
+    await expect(confirmDelete.or(choiceButton).first()).toBeVisible();
+    if (await confirmDelete.isVisible()) {
+      await confirmDelete.click();
+    }
+  }
+  await choiceButton.click();
+};
+
+/** Saves the choice whose page is open, and waits until it is saved. */
+const saveChoice = async (page: Page, choice: Choice) => {
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().includes("/subapps/invoke")
+  );
+  await page.getByRole("button", { name: "Lagre" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(
+    page.getByRole("heading", { name: choice.saved, level: 2 })
+  ).toBeVisible();
+};
+
+/**
+ * Checks that the heir's saved choice is the given one, both on the heir's own
+ * "Ditt valg" tab and next to the heir's name on "Alles valg".
+ */
+const expectChosen = async (
+  page: Page,
+  baseURL: string | undefined,
+  choice: Choice,
+  heir: Heir
+) => {
+  const panel = await openYourChoice(page, baseURL);
+  await expect(
+    panel.getByRole("heading", { name: choice.chosen, level: 3 })
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: /^Velg på nytt/ })
+  ).toBeEnabled();
+
+  await page.getByRole("tab", { name: "Alles valg", exact: true }).click();
+  const heirRow = page
+    .locator(visiblePanel)
+    .getByRole("listitem")
+    .filter({ hasText: heirName(heir) });
+  await expect(heirRow).toHaveCount(1);
+  await expect(heirRow).toContainText(choice.allChoices);
+};
+
 for (const choice of choices) {
   test.describe(
     `${choice.name}, chosen by ${heirTitle(choice.heir)}`,
     { annotation: heirAnnotation(choice.heir) },
     () => {
       test.use({ storageState: choice.heir.storageState });
-      // Choosing again can delete the saved choice (see below), so the tests run
-      // one at a time, and the test that saves the choice runs last.
+      // Choosing again can delete the saved choice, so the tests run one at a
+      // time, and the tests that save run last, ending on this heir's choice.
       test.describe.configure({ mode: "serial" });
 
       test.beforeEach(async ({ page, baseURL }) => {
-        const panel = await openYourChoice(page, baseURL);
-
-        // The heir may have saved a choice in an earlier run, and then the tab
-        // shows that choice instead of the forms. Before anyone in the estate
-        // has started a privat skifte declaration, "Velg på nytt" only shows the
-        // forms again. After that, it asks to confirm, and confirming deletes
-        // the saved choice.
-        const chooseAgain = panel.getByRole("button", {
-          name: /^Velg på nytt/,
-        });
-        const choiceButton = panel.getByRole("button", { name: choice.button });
-        await expect(chooseAgain.or(choiceButton).first()).toBeVisible();
-        if (await chooseAgain.isVisible()) {
-          await chooseAgain.click();
-          const confirmDelete = panel.getByRole("button", {
-            name: "Ja, slett valg",
-          });
-          await expect(confirmDelete.or(choiceButton).first()).toBeVisible();
-          if (await confirmDelete.isVisible()) {
-            await confirmDelete.click();
-          }
-        }
-
-        await choiceButton.click();
+        await openChoicePage(page, baseURL, choice);
       });
 
       test("opens its own page", async ({ page }) => {
@@ -199,18 +262,9 @@ for (const choice of choices) {
         page,
         baseURL,
       }) => {
-        const saved = page.waitForResponse(
-          (response) =>
-            response.request().method() === "POST" &&
-            response.url().includes("/subapps/invoke")
-        );
-        await page.getByRole("button", { name: "Lagre" }).click();
-        expect((await saved).ok()).toBe(true);
+        await saveChoice(page, choice);
 
-        // The last step confirms the choice, and it cannot be saved twice.
-        await expect(
-          page.getByRole("heading", { name: choice.saved, level: 2 })
-        ).toBeVisible();
+        // It cannot be saved twice.
         await expect(page.getByRole("button", { name: "Lagre" })).toHaveCount(
           0
         );
@@ -218,25 +272,29 @@ for (const choice of choices) {
           0
         );
 
-        // The choice stays saved when step 4 is opened again.
-        const panel = await openYourChoice(page, baseURL);
-        await expect(
-          panel.getByRole("heading", { name: choice.chosen, level: 3 })
-        ).toBeVisible();
-        await expect(
-          panel.getByRole("button", { name: /^Velg på nytt/ })
-        ).toBeEnabled();
+        // The choice stays saved when step 4 is opened again, and the other
+        // heirs see it next to this heir's name.
+        await expectChosen(page, baseURL, choice, choice.heir);
+      });
 
-        // The other heirs see the choice next to this heir's name.
-        await page
-          .getByRole("tab", { name: "Alles valg", exact: true })
-          .click();
-        const heirRow = page
-          .locator(visiblePanel)
-          .getByRole("listitem")
-          .filter({ hasText: heirName(choice.heir) });
-        await expect(heirRow).toHaveCount(1);
-        await expect(heirRow).toContainText(choice.allChoices);
+      const other = choices.find((c) => c.name === switchTo[choice.name])!;
+      test(`switching to ${other.name.toLowerCase()} replaces the choice, and switching back restores it`, async ({
+        page,
+        baseURL,
+      }) => {
+        // Start from this heir's own choice, saved.
+        await saveChoice(page, choice);
+        await expectChosen(page, baseURL, choice, choice.heir);
+
+        // Choosing again and saving another static choice replaces it.
+        await openChoicePage(page, baseURL, other);
+        await saveChoice(page, other);
+        await expectChosen(page, baseURL, other, choice.heir);
+
+        // Switching back leaves the heir as the other tests expect to find it.
+        await openChoicePage(page, baseURL, choice);
+        await saveChoice(page, choice);
+        await expectChosen(page, baseURL, choice, choice.heir);
       });
     }
   );
