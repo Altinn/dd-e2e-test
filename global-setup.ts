@@ -26,10 +26,41 @@ async function logIn(browser: Browser, heir: Heir) {
     .click();
   await page.getByRole("link", { name: "Åpne Digitalt dødsbo" }).click();
 
-  // The name of the logged-in heir is the only paragraph in the header.
+  // The heir should land on the estate's front page. If not, say where they
+  // landed instead, and keep a screenshot: CI uploads test-results/ when a run
+  // fails, while an error in the global setup has no trace of its own.
+  const frontPage = page.getByRole("heading", {
+    name: /^Digitalt dødsbo etter /,
+    level: 1,
+  });
+  try {
+    await frontPage.waitFor({ timeout: 30_000 });
+  } catch {
+    const screenshot = `test-results/global-setup-${heir.label
+      .toLowerCase()
+      .replace(/\s+/g, "-")}.png`;
+    await page.screenshot({ path: screenshot, fullPage: true });
+    throw new Error(
+      `${heir.label} (${heir.ssnVariable}) did not reach the estate's front ` +
+        `page after logging in. Landed on ${page.url()} with the title ` +
+        `"${await page.title()}". Screenshot: ${screenshot}`
+    );
+  }
+
+  // The name of the logged-in heir is the only paragraph in the page header,
+  // <header id="app-header">. It only labels the heir in titles and the
+  // report, so a missing name is logged rather than failing the run.
   const name = (
-    await page.getByRole("banner").getByRole("paragraph").first().textContent()
+    await page
+      .getByRole("banner")
+      .getByRole("paragraph")
+      .first()
+      .textContent({ timeout: 5_000 })
+      .catch(() => null)
   )?.trim();
+  if (!name) {
+    console.warn(`${heir.label}: could not read the name from the page header`);
+  }
 
   await page.context().storageState({ path: heir.storageState });
   const url = page.url();
