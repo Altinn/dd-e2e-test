@@ -14,6 +14,10 @@ import type {
  * a table per spec file with each test's outcome, and for a test that did not
  * pass, its error message, annotations and screenshots.
  *
+ * The `sections` option names the spec files, in the order they are shown,
+ * e.g. { "step3/checklist.spec.ts": "Step 3: Checklist" }. A file that is not
+ * named gets a name made from its path, and is shown after the named ones.
+ *
  * This is the page published to GitHub Pages. It only holds what is written
  * here, so traces and page snapshots, which carry the heirs' sessions and
  * data, stay in Playwright's own HTML report in the run's artifacts.
@@ -49,12 +53,39 @@ const seconds = (milliseconds: number) =>
 const osloTime = (date: Date) =>
   date.toLocaleString("nb-NO", { timeZone: "Europe/Oslo" });
 
+/** "step5/decision_letter.spec.ts" → "Step 5: Decision letter" */
+const nameFromPath = (file: string) => {
+  const words = (text: string) => {
+    const spaced = text.replace(/[_-]+/g, " ").trim();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  };
+  return file
+    .replace(/\.spec\.[jt]s$/, "")
+    .split("/")
+    .map((part) => part.replace(/^step(\d+)$/i, "Step $1"))
+    .map(words)
+    .join(": ");
+};
+
+// The title path is ["", project, file, ...describe blocks, title]. The file
+// is relative to the test folder, with Windows paths turned into URL-like ones.
+const fileOf = (test: TestCase) =>
+  (test.titlePath()[2] ?? "").replace(/\\/g, "/");
+
 class PlainHtmlReporter implements Reporter {
   private suite: Suite | undefined;
   private readonly outputFolder: string;
+  private readonly sections: Record<string, string>;
 
-  constructor(options: { outputFolder?: string } = {}) {
+  constructor(
+    options: { outputFolder?: string; sections?: Record<string, string> } = {}
+  ) {
     this.outputFolder = path.resolve(options.outputFolder ?? "plain-report");
+    this.sections = options.sections ?? {};
+  }
+
+  private sectionName(file: string) {
+    return this.sections[file] ?? nameFromPath(file);
   }
 
   printsToStdio() {
@@ -76,15 +107,23 @@ class PlainHtmlReporter implements Reporter {
     const byFile = new Map<string, TestCase[]>();
     for (const test of tests) {
       counts[outcomes[test.outcome()]] += 1;
-      // The title path is ["", project, file, ...describe blocks, title].
-      const file = test.titlePath()[2] ?? "";
+      const file = fileOf(test);
       byFile.set(file, [...(byFile.get(file) ?? []), test]);
     }
+    // Named files first, in the order they are named, then the rest.
+    const order = Object.keys(this.sections);
+    const position = (file: string) =>
+      order.includes(file) ? order.indexOf(file) : order.length;
+    const files = [...byFile.keys()].sort(
+      (a, b) => position(a) - position(b) || a.localeCompare(b)
+    );
 
     const failedScreenshots: { test: string; path: string }[] = [];
     const details = (test: TestCase) => {
       const parts: string[] = [];
-      for (const annotation of test.annotations) {
+      // Some annotations only mark how a test ran, e.g. "serial", and have no
+      // text worth showing.
+      for (const annotation of test.annotations.filter((a) => a.description)) {
         parts.push(
           `<p><b>${escapeHtml(annotation.type)}:</b> ${escapeHtml(
             annotation.description ?? ""
@@ -121,7 +160,7 @@ class PlainHtmlReporter implements Reporter {
             .slice(0, 16)}${path.extname(attachment.path)}`;
           fs.writeFileSync(path.join(this.outputFolder, name), content);
           if (test.outcome() === "unexpected") {
-            const testName = `${test.titlePath()[2]} — ${test
+            const testName = `${this.sectionName(fileOf(test))} — ${test
               .titlePath()
               .slice(3)
               .join(" › ")}`;
@@ -140,8 +179,8 @@ class PlainHtmlReporter implements Reporter {
       return parts.join("");
     };
 
-    const sections = [...byFile].map(([file, fileTests]) => {
-      const rows = fileTests.map((test) => {
+    const sections = files.map((file) => {
+      const rows = byFile.get(file)!.map((test) => {
         const outcome = outcomes[test.outcome()];
         const title = test.titlePath().slice(3).join(" › ");
         const retries =
@@ -158,7 +197,8 @@ class PlainHtmlReporter implements Reporter {
 <td>${seconds(duration)}</td>
 </tr>`;
       });
-      return `<h2>${escapeHtml(file)}</h2>
+      return `<h2>${escapeHtml(this.sectionName(file))}</h2>
+<p><small>${escapeHtml(file)}</small></p>
 <table>
 <thead><tr><th>Outcome</th><th>Test</th><th>Time</th></tr></thead>
 <tbody>
