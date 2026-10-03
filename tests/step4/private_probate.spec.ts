@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
-import { heirStorageState } from "../../global-setup";
+import { heirAnnotation, heirName, heirs, heirTitle } from "../../heirs";
 
 /**
  * Privat skifte, the probate form on the "Ditt valg" tab in step 4 that is
@@ -7,14 +7,22 @@ import { heirStorageState } from "../../global-setup";
  * answers questions about the estate, and then signs and submits a
  * declaration to the district court.
  *
+ * Heir 2 of the shared test estate (see heirs.ts) does this, and only this,
+ * so no other test changes what heir 2 has chosen.
+ *
  * Signing cannot be undone: afterwards the heir can no longer choose a
- * probate form in Digitalt dødsbo. The test estate is reset every night, so
- * the first run after a reset signs, and later runs that day skip signing.
- * The tests run in order, so the second one checks the signed declaration on
- * every run.
+ * probate form in Digitalt dødsbo. The form is to be checked on every run, so
+ * heir 2 must be unsigned when the run starts. The estate is reset every night
+ * at 03:00 Oslo time, before the scheduled run; a run that finds heir 2
+ * already signed fails, since the form was then not checked. Run again after
+ * resetting the estate.
+ *
+ * The tests run in order and are not retried: a retry would find the heir
+ * signed by the attempt before it, and fail for that reason instead.
  */
-test.describe.configure({ mode: "serial" });
-test.use({ storageState: heirStorageState("HEIR2_SSN") });
+const heir = heirs.privateProbate;
+test.describe.configure({ mode: "serial", retries: 0 });
+test.use({ storageState: heir.storageState });
 
 /** Picks an option in one of the form's searchable dropdowns. */
 const select = async (page: Page, combobox: Locator, option: string) => {
@@ -92,9 +100,9 @@ const formPages: {
         .fill("Testveien 1");
       await main.getByRole("textbox", { name: "Postnr" }).fill("0150");
       // The postal town is looked up from the postcode.
-      await expect(
-        main.getByRole("textbox", { name: "Poststed" })
-      ).toHaveValue("OSLO");
+      await expect(main.getByRole("textbox", { name: "Poststed" })).toHaveValue(
+        "OSLO"
+      );
     },
     details: [
       ["Navn", "Testsamboer Testesen"],
@@ -275,262 +283,293 @@ const expectDeclarationToContain = (
     `the declaration says "${label} ${value}"`
   ).toMatch(labelled(label, value));
 
-test("the heir fills in, signs and submits the declaration", async ({
-  page,
-  baseURL,
-}) => {
-  const deceasedName = process.env.DECEASED_NAME;
-  if (!deceasedName) {
-    throw new Error("DECEASED_NAME environment variable is not defined");
-  }
+test.describe(
+  `Privat skifte, declared by ${heirTitle(heir)}`,
+  { annotation: heirAnnotation(heir) },
+  () => {
+    test("the heir fills in, signs and submits the declaration", async ({
+      page,
+      baseURL,
+    }) => {
+      const deceasedName = process.env.DECEASED_NAME;
+      if (!deceasedName) {
+        throw new Error("DECEASED_NAME environment variable is not defined");
+      }
 
-  const panel = await openYourChoice(page, baseURL);
+      const panel = await openYourChoice(page, baseURL);
 
-  // The heir has either not started, has started a declaration in an earlier
-  // run that did not finish, or has already signed.
-  const choose = panel.getByRole("button", { name: "Velg privat skifte" });
-  const continueDeclaration = panel.getByRole("button", {
-    name: /^Fortsett utfylling/,
-  });
-  const signed = panel.getByRole("heading", { name: signedChoice });
-  await expect(
-    choose.or(continueDeclaration).or(signed).first()
-  ).toBeVisible();
-
-  test.skip(
-    await signed.isVisible(),
-    "The heir has already signed, so the declaration cannot be filled in " +
-      "again until the test estate is reset tonight"
-  );
-
-  if (await continueDeclaration.isVisible()) {
-    await continueDeclaration.click();
-  } else {
-    await choose.click();
-  }
-
-  // The form is a separate app, which can take a while to open a new form.
-  const main = page.getByRole("main");
-  await expect(
-    main.getByRole("heading", { name: "Privat skifte av dødsbo", level: 1 })
-  ).toBeVisible({ timeout: 30_000 });
-
-  for (const formPage of formPages) {
-    await expect(
-      main.getByRole("heading", { name: formPage.heading, level: 2 })
-    ).toBeVisible();
-    await expect(page).toHaveTitle(
-      new RegExp(`^${formPage.title} - Privat skifte av dødsbo`)
-    );
-    if (formPage.progress) {
+      // The heir has either not started, has started a declaration in an earlier
+      // run that did not finish, or has already signed.
+      const choose = panel.getByRole("button", { name: "Velg privat skifte" });
+      const continueDeclaration = panel.getByRole("button", {
+        name: /^Fortsett utfylling/,
+      });
+      const signed = panel.getByRole("heading", { name: signedChoice });
       await expect(
-        main.getByRole("img").filter({ hasText: formPage.progress })
+        choose.or(continueDeclaration).or(signed).first()
       ).toBeVisible();
-    }
 
-    await main
-      .getByRole("radiogroup", {
-        name: new RegExp(`^${escapeRegExp(formPage.question)}`),
-      })
-      .getByRole("radio", { name: formPage.answer, exact: true })
-      .check();
-    if (formPage.alert) {
+      if (await signed.isVisible()) {
+        throw new Error(
+          `${heirTitle(heir)}, ${heirName(heir)}, has already signed a privat ` +
+            "skifte declaration in this estate, so the form could not be " +
+            "checked. The estate is reset every night at 03:00 Oslo time, so " +
+            "either that reset did not clear the declaration, or the tests have " +
+            "already run since. Reset the estate and run the tests again."
+        );
+      }
+
+      if (await continueDeclaration.isVisible()) {
+        await continueDeclaration.click();
+      } else {
+        await choose.click();
+      }
+
+      // The form is a separate app, which can take a while to open a new form.
+      const main = page.getByRole("main");
       await expect(
-        main.getByRole("alert", { name: formPage.alert })
+        main.getByRole("heading", { name: "Privat skifte av dødsbo", level: 1 })
+      ).toBeVisible({ timeout: 30_000 });
+
+      for (const formPage of formPages) {
+        await expect(
+          main.getByRole("heading", { name: formPage.heading, level: 2 })
+        ).toBeVisible();
+        await expect(page).toHaveTitle(
+          new RegExp(`^${formPage.title} - Privat skifte av dødsbo`)
+        );
+        if (formPage.progress) {
+          await expect(
+            main.getByRole("img").filter({ hasText: formPage.progress })
+          ).toBeVisible();
+        }
+
+        await main
+          .getByRole("radiogroup", {
+            name: new RegExp(`^${escapeRegExp(formPage.question)}`),
+          })
+          .getByRole("radio", { name: formPage.answer, exact: true })
+          .check();
+        if (formPage.alert) {
+          await expect(
+            main.getByRole("alert", { name: formPage.alert })
+          ).toBeVisible();
+        }
+        await formPage.fillIn?.(main, page);
+        await main.getByRole("button", { name: "Neste" }).click();
+      }
+
+      // The summary repeats every answer, and each one can be changed from there.
+      await expect(page).toHaveTitle(/^Oppsummering - Privat skifte av dødsbo/);
+      await expect(
+        main.getByRole("heading", {
+          name: "Erklæring om privat skifte",
+          level: 2,
+        })
       ).toBeVisible();
-    }
-    await formPage.fillIn?.(main, page);
-    await main.getByRole("button", { name: "Neste" }).click();
+      await expect(
+        main.getByRole("img").filter({ hasText: "8/8" })
+      ).toBeVisible();
+      await expect(main).toContainText(
+        new RegExp(`Dødsboet etter\\s*${escapeRegExp(deceasedName.trim())}`)
+      );
+      for (const formPage of formPages) {
+        await expect(main).toContainText(
+          labelled(formPage.question, formPage.answer)
+        );
+        for (const [label, value] of formPage.details ?? []) {
+          await expect(main).toContainText(labelled(label, value));
+        }
+      }
+
+      // The declaration lists the same heirs and conditions as the summary.
+      const heirs = await main
+        .getByRole("listitem")
+        .filter({ hasText: /, født \d{2}\.\d{2}\.\d{4}/ })
+        .allTextContents();
+      expect(heirs.length).toBeGreaterThan(0);
+      const conditions = await main
+        .getByRole("list")
+        .filter({ hasText: "Jeg samtykker til at dødsboet kan skiftes privat" })
+        .getByRole("listitem")
+        .allTextContents();
+      expect(conditions.length).toBeGreaterThan(0);
+      await expect(main.getByRole("button", { name: "Endre" })).toHaveCount(
+        formPages.length - 1
+      );
+      await expect(
+        main.getByRole("heading", { name: "Privat skifte med gjeldsansvar" })
+      ).toBeVisible();
+
+      const submitted = page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/process/next")
+      );
+      await main.getByRole("button", { name: "Signer og send inn" }).click();
+      expect((await submitted).ok()).toBe(true);
+
+      await expect(page).toHaveTitle(/^Skjemaet er sendt inn/);
+      await expect(
+        main.getByRole("heading", { name: "Kvittering", level: 1 })
+      ).toBeVisible();
+      await expect(
+        main.getByRole("heading", { name: "Skjemaet er sendt inn", level: 2 })
+      ).toBeVisible();
+      const pdfLink = main.getByRole("link", {
+        name: /Privat skifte av dødsbo.*\.pdf/,
+      });
+      await expect(pdfLink).toBeVisible();
+
+      // The signed declaration is what the district court receives, so it must
+      // say what the heir answered and agreed to.
+      const declaration = await downloadPdfText(
+        page,
+        (await pdfLink.getAttribute("href"))!
+      );
+      const receipt = async (label: string) =>
+        (await main
+          .getByRole("row", { name: new RegExp(`^${label}:`) })
+          .getByRole("cell")
+          .nth(1)
+          .textContent())!.trim();
+
+      expectDeclarationToContain(declaration, "Erklæring om privat skifte");
+      for (const label of ["Avsender", "Mottaker", "Referansenummer"]) {
+        expectDeclarationToContain(declaration, label, await receipt(label));
+      }
+      // The declaration is stamped when it is made, a moment before the receipt,
+      // so the two times can be a minute or so apart.
+      const sentAt = (text: string) => {
+        const [, day, month, year, hour, minute] = text.match(
+          /(\d{2})\.(\d{2})\.(\d{4})\s*\/\s*(\d{2}):(\d{2})/
+        )!;
+        return new Date(+year, +month - 1, +day, +hour, +minute).getTime();
+      };
+      const declarationSentAt = restoreL(declaration).match(
+        /Dato sendt:?\s*(\d{2}\.\d{2}\.\d{4}\s*\/\s*\d{2}:\d{2})/
+      );
+      expect(
+        declarationSentAt,
+        "the declaration says when it was sent"
+      ).not.toBeNull();
+      expect(
+        Math.abs(
+          sentAt(declarationSentAt![1]) - sentAt(await receipt("Dato sendt"))
+        ),
+        "milliseconds between the time in the declaration and on the receipt"
+      ).toBeLessThanOrEqual(2 * 60_000);
+      expectDeclarationToContain(
+        declaration,
+        "Dødsboet etter",
+        deceasedName.trim()
+      );
+      for (const formPage of formPages) {
+        expectDeclarationToContain(
+          declaration,
+          formPage.question,
+          formPage.answer
+        );
+        for (const [label, value] of formPage.details ?? []) {
+          expectDeclarationToContain(declaration, label, value);
+        }
+      }
+      for (const heir of heirs) {
+        expectDeclarationToContain(declaration, heir);
+      }
+      expectDeclarationToContain(
+        declaration,
+        "Betingelser ved privat skifte med gjeldsansvar"
+      );
+      for (const condition of conditions) {
+        expectDeclarationToContain(declaration, condition);
+      }
+    });
+
+    test("a signed declaration is shown to the heir and the other heirs", async ({
+      page,
+      baseURL,
+    }) => {
+      const deceasedName = process.env.DECEASED_NAME;
+      if (!deceasedName) {
+        throw new Error("DECEASED_NAME environment variable is not defined");
+      }
+
+      // The receipt is made after the declaration is signed, and until it is
+      // ready the tab says "Vent litt mens kvitteringen lages." without a link.
+      test.setTimeout(180_000);
+      const panel = page.locator(visiblePanel);
+      await expect(async () => {
+        await openYourChoice(page, baseURL);
+        await expect(
+          panel.getByRole("link", { name: declarationLink })
+        ).toBeVisible({ timeout: 10_000 });
+      }).toPass({ timeout: 120_000 });
+
+      await expect(
+        panel.getByRole("heading", { name: signedChoice, level: 3 })
+      ).toBeVisible();
+      // The choice is final once the declaration is signed.
+      await expect(panel).toContainText(
+        "Du kan ikke lenger velge skifteform i Digitalt dødsbo."
+      );
+      await expect(
+        panel.getByRole("button", { name: /^Velg på nytt/ })
+      ).toHaveCount(0);
+      const yourDeclaration = panel.getByRole("link", {
+        name: declarationLink,
+      });
+      await expect(yourDeclaration).toBeVisible();
+      const yourHref = (await yourDeclaration.getAttribute("href"))!;
+
+      // The other heirs see the choice and the declaration next to this
+      // heir's name.
+      await page.getByRole("tab", { name: "Alles valg", exact: true }).click();
+      const heirRow = page
+        .locator(visiblePanel)
+        .getByRole("listitem")
+        .filter({ hasText: heirName(heir) });
+      await expect(heirRow).toHaveCount(1);
+      await expect(heirRow).toContainText("Privat skifte (med gjeldsansvar)");
+      const othersDeclaration = heirRow.getByRole("link", {
+        name: declarationLink,
+      });
+      await expect(othersDeclaration).toBeVisible();
+      const othersHref = (await othersDeclaration.getAttribute("href"))!;
+
+      // Both links lead to the signed declaration. The answers in it are checked
+      // when it is signed, since a later run may find one signed with other
+      // answers before the estate was reset.
+      for (const href of [yourHref, othersHref]) {
+        const declaration = await downloadPdfText(page, href);
+        expectDeclarationToContain(declaration, "Erklæring om privat skifte");
+        expectDeclarationToContain(
+          declaration,
+          "Dødsboet etter",
+          deceasedName.trim()
+        );
+      }
+    });
+
+    test("the text of the declaration can be copied", async ({
+      page,
+      baseURL,
+    }) => {
+      // Copying, searching and screen readers use the text of the PDF, not the
+      // drawn letters.
+      test.fail(
+        true,
+        "The declaration PDF maps the lowercase l to U+E050 instead of U+006C, " +
+          "so the letter is missing from its text. Remove restoreL() when fixed."
+      );
+
+      const panel = await openYourChoice(page, baseURL);
+      const href = await panel
+        .getByRole("link", { name: declarationLink })
+        .getAttribute("href");
+      const declaration = await downloadPdfText(page, href!);
+
+      expect(declaration).toContain("Erklæring om privat skifte");
+    });
   }
-
-  // The summary repeats every answer, and each one can be changed from there.
-  await expect(page).toHaveTitle(/^Oppsummering - Privat skifte av dødsbo/);
-  await expect(
-    main.getByRole("heading", { name: "Erklæring om privat skifte", level: 2 })
-  ).toBeVisible();
-  await expect(main.getByRole("img").filter({ hasText: "8/8" })).toBeVisible();
-  await expect(main).toContainText(
-    new RegExp(`Dødsboet etter\\s*${escapeRegExp(deceasedName.trim())}`)
-  );
-  for (const formPage of formPages) {
-    await expect(main).toContainText(
-      labelled(formPage.question, formPage.answer)
-    );
-    for (const [label, value] of formPage.details ?? []) {
-      await expect(main).toContainText(labelled(label, value));
-    }
-  }
-
-  // The declaration lists the same heirs and conditions as the summary.
-  const heirs = await main
-    .getByRole("listitem")
-    .filter({ hasText: /, født \d{2}\.\d{2}\.\d{4}/ })
-    .allTextContents();
-  expect(heirs.length).toBeGreaterThan(0);
-  const conditions = await main
-    .getByRole("list")
-    .filter({ hasText: "Jeg samtykker til at dødsboet kan skiftes privat" })
-    .getByRole("listitem")
-    .allTextContents();
-  expect(conditions.length).toBeGreaterThan(0);
-  await expect(main.getByRole("button", { name: "Endre" })).toHaveCount(
-    formPages.length - 1
-  );
-  await expect(
-    main.getByRole("heading", { name: "Privat skifte med gjeldsansvar" })
-  ).toBeVisible();
-
-  const submitted = page.waitForResponse(
-    (response) =>
-      response.request().method() === "PUT" &&
-      response.url().includes("/process/next")
-  );
-  await main.getByRole("button", { name: "Signer og send inn" }).click();
-  expect((await submitted).ok()).toBe(true);
-
-  await expect(page).toHaveTitle(/^Skjemaet er sendt inn/);
-  await expect(
-    main.getByRole("heading", { name: "Kvittering", level: 1 })
-  ).toBeVisible();
-  await expect(
-    main.getByRole("heading", { name: "Skjemaet er sendt inn", level: 2 })
-  ).toBeVisible();
-  const pdfLink = main.getByRole("link", {
-    name: /Privat skifte av dødsbo.*\.pdf/,
-  });
-  await expect(pdfLink).toBeVisible();
-
-  // The signed declaration is what the district court receives, so it must
-  // say what the heir answered and agreed to.
-  const declaration = await downloadPdfText(
-    page,
-    (await pdfLink.getAttribute("href"))!
-  );
-  const receipt = async (label: string) =>
-    (await main
-      .getByRole("row", { name: new RegExp(`^${label}:`) })
-      .getByRole("cell")
-      .nth(1)
-      .textContent())!.trim();
-
-  expectDeclarationToContain(declaration, "Erklæring om privat skifte");
-  for (const label of ["Avsender", "Mottaker", "Referansenummer"]) {
-    expectDeclarationToContain(declaration, label, await receipt(label));
-  }
-  // The declaration is stamped when it is made, a moment before the receipt,
-  // so the two times can be a minute or so apart.
-  const sentAt = (text: string) => {
-    const [, day, month, year, hour, minute] = text.match(
-      /(\d{2})\.(\d{2})\.(\d{4})\s*\/\s*(\d{2}):(\d{2})/
-    )!;
-    return new Date(+year, +month - 1, +day, +hour, +minute).getTime();
-  };
-  const declarationSentAt = restoreL(declaration).match(
-    /Dato sendt:?\s*(\d{2}\.\d{2}\.\d{4}\s*\/\s*\d{2}:\d{2})/
-  );
-  expect(declarationSentAt, "the declaration says when it was sent").not.toBeNull();
-  expect(
-    Math.abs(sentAt(declarationSentAt![1]) - sentAt(await receipt("Dato sendt"))),
-    "milliseconds between the time in the declaration and on the receipt"
-  ).toBeLessThanOrEqual(2 * 60_000);
-  expectDeclarationToContain(declaration, "Dødsboet etter", deceasedName.trim());
-  for (const formPage of formPages) {
-    expectDeclarationToContain(
-      declaration,
-      formPage.question,
-      formPage.answer
-    );
-    for (const [label, value] of formPage.details ?? []) {
-      expectDeclarationToContain(declaration, label, value);
-    }
-  }
-  for (const heir of heirs) {
-    expectDeclarationToContain(declaration, heir);
-  }
-  expectDeclarationToContain(
-    declaration,
-    "Betingelser ved privat skifte med gjeldsansvar"
-  );
-  for (const condition of conditions) {
-    expectDeclarationToContain(declaration, condition);
-  }
-});
-
-test("a signed declaration is shown to the heir and the other heirs", async ({
-  page,
-  baseURL,
-}) => {
-  const deceasedName = process.env.DECEASED_NAME;
-  if (!deceasedName) {
-    throw new Error("DECEASED_NAME environment variable is not defined");
-  }
-
-  // The receipt is made after the declaration is signed, and until it is
-  // ready the tab says "Vent litt mens kvitteringen lages." without a link.
-  test.setTimeout(180_000);
-  const panel = page.locator(visiblePanel);
-  await expect(async () => {
-    await openYourChoice(page, baseURL);
-    await expect(
-      panel.getByRole("link", { name: declarationLink })
-    ).toBeVisible({ timeout: 10_000 });
-  }).toPass({ timeout: 120_000 });
-
-  await expect(
-    panel.getByRole("heading", { name: signedChoice, level: 3 })
-  ).toBeVisible();
-  // The choice is final once the declaration is signed.
-  await expect(panel).toContainText(
-    "Du kan ikke lenger velge skifteform i Digitalt dødsbo."
-  );
-  await expect(
-    panel.getByRole("button", { name: /^Velg på nytt/ })
-  ).toHaveCount(0);
-  const yourDeclaration = panel.getByRole("link", { name: declarationLink });
-  await expect(yourDeclaration).toBeVisible();
-  const yourHref = (await yourDeclaration.getAttribute("href"))!;
-
-  await page.getByRole("tab", { name: "Alles valg", exact: true }).click();
-  const heir = page
-    .locator(visiblePanel)
-    .getByRole("listitem")
-    .filter({ hasText: "Privat skifte (med gjeldsansvar)" });
-  await expect(heir).toHaveCount(1);
-  const othersDeclaration = heir.getByRole("link", { name: declarationLink });
-  await expect(othersDeclaration).toBeVisible();
-  const othersHref = (await othersDeclaration.getAttribute("href"))!;
-
-  // Both links lead to the signed declaration. The answers in it are checked
-  // when it is signed, since a later run may find one signed with other
-  // answers before the estate was reset.
-  for (const href of [yourHref, othersHref]) {
-    const declaration = await downloadPdfText(page, href);
-    expectDeclarationToContain(declaration, "Erklæring om privat skifte");
-    expectDeclarationToContain(
-      declaration,
-      "Dødsboet etter",
-      deceasedName.trim()
-    );
-  }
-});
-
-test("the text of the declaration can be copied", async ({
-  page,
-  baseURL,
-}) => {
-  // Copying, searching and screen readers use the text of the PDF, not the
-  // drawn letters.
-  test.fail(
-    true,
-    "The declaration PDF maps the lowercase l to U+E050 instead of U+006C, " +
-      "so the letter is missing from its text. Remove restoreL() when fixed."
-  );
-
-  const panel = await openYourChoice(page, baseURL);
-  const href = await panel
-    .getByRole("link", { name: declarationLink })
-    .getAttribute("href");
-  const declaration = await downloadPdfText(page, href!);
-
-  expect(declaration).toContain("Erklæring om privat skifte");
-});
+);

@@ -45,7 +45,8 @@ const escapeHtml = (text: string) =>
     .replace(/"/g, "&quot;");
 
 // Playwright colours its error messages with ANSI escape sequences.
-const stripAnsi = (text: string) => text.replace(/\u001b\[[0-9;]*[A-Za-z]/g, "");
+const stripAnsi = (text: string) =>
+  text.replace(/\u001b\[[0-9;]*[A-Za-z]/g, "");
 
 const seconds = (milliseconds: number) =>
   `${(milliseconds / 1000).toFixed(1)} s`;
@@ -118,12 +119,66 @@ class PlainHtmlReporter implements Reporter {
       (a, b) => position(a) - position(b) || a.localeCompare(b)
     );
 
+    // Tests that log in as a particular heir carry a "heir" annotation, written
+    // as "Heir 2 (child), NAME (HEIR2_SSN): purpose" (see heirs.ts). They are
+    // summed up per heir at the top of the page.
+    const byHeir = new Map<string, TestCase[]>();
+    for (const test of tests) {
+      for (const annotation of test.annotations) {
+        if (annotation.type === "heir" && annotation.description) {
+          byHeir.set(annotation.description, [
+            ...(byHeir.get(annotation.description) ?? []),
+            test,
+          ]);
+        }
+      }
+    }
+    const heirSummary = [...byHeir]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([description, heirTests]) => {
+        const split = description.indexOf("): ");
+        const who = split >= 0 ? description.slice(0, split + 1) : description;
+        const purpose = split >= 0 ? description.slice(split + 3) : "";
+        const tally = Object.values(outcomes)
+          .map((outcome) => ({
+            outcome,
+            count: heirTests.filter(
+              (test) => outcomes[test.outcome()] === outcome
+            ).length,
+          }))
+          .filter(({ count }) => count > 0)
+          .map(({ outcome, count }) => `${count} ${outcome}`)
+          .join(", ");
+        const failed = heirTests.some(
+          (test) => test.outcome() === "unexpected"
+        );
+        return `<tr class="${failed ? "failed" : "passed"}">
+<td>${escapeHtml(who)}</td>
+<td>${escapeHtml(purpose)}</td>
+<td>${heirTests.length} tests: ${tally}</td>
+</tr>`;
+      });
+    const heirSection =
+      heirSummary.length === 0
+        ? ""
+        : `<h2>Heirs</h2>
+<p>The tests log in as four heirs of the same test estate, which is reset every night at 03:00 Oslo time. Each probate choice is made by its own heir, so the choices do not overwrite each other.</p>
+<table>
+<thead><tr><th>Heir</th><th>Purpose</th><th>Tests</th></tr></thead>
+<tbody>
+${heirSummary.join("\n")}
+</tbody>
+</table>`;
+
     const failedScreenshots: { test: string; path: string }[] = [];
     const details = (test: TestCase) => {
       const parts: string[] = [];
       // Some annotations only mark how a test ran, e.g. "serial", and have no
       // text worth showing.
-      for (const annotation of test.annotations.filter((a) => a.description)) {
+      // The heir is named in the test's title and summed up at the top.
+      for (const annotation of test.annotations.filter(
+        (a) => a.description && a.type !== "heir"
+      )) {
         parts.push(
           `<p><b>${escapeHtml(annotation.type)}:</b> ${escapeHtml(
             annotation.description ?? ""
@@ -135,8 +190,7 @@ class PlainHtmlReporter implements Reporter {
       }
 
       test.results.forEach((attempt, index) => {
-        const label =
-          test.results.length > 1 ? `Attempt ${index + 1}: ` : "";
+        const label = test.results.length > 1 ? `Attempt ${index + 1}: ` : "";
         for (const error of attempt.errors) {
           parts.push(
             `<p>${label}${escapeHtml(attempt.status)}</p><pre>${escapeHtml(
@@ -165,7 +219,9 @@ class PlainHtmlReporter implements Reporter {
               .slice(3)
               .join(" › ")}`;
             // Later attempts replace earlier ones, so the last one is kept.
-            const existing = failedScreenshots.find((entry) => entry.test === testName);
+            const existing = failedScreenshots.find(
+              (entry) => entry.test === testName
+            );
             if (existing) existing.path = name;
             else failedScreenshots.push({ test: testName, path: name });
           }
@@ -231,6 +287,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 <p>${counts.passed} passed, ${counts.failed} failed, ${counts.flaky} flaky, ${
       counts.skipped
     } skipped.</p>
+${heirSection}
 ${sections.join("\n")}
 </body>
 </html>

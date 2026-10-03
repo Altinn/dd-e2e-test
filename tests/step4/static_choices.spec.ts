@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { heirStorageState } from "../../global-setup";
+import { heirAnnotation, heirName, heirs, heirTitle } from "../../heirs";
 
 /**
  * The probate forms on the "Ditt valg" tab in step 4 that are not digitalised.
@@ -7,15 +7,20 @@ import { heirStorageState } from "../../global-setup";
  * contacting the district court, and lets the heir save the choice so the
  * other heirs can see it. Saving is not legally binding, so these tests do it.
  *
- * Each choice is made by its own heir, so the saved choices do not overwrite
- * each other. Privat skifte is digitalised and is tested in
+ * Each choice is made by its own heir of the shared test estate (see
+ * heirs.ts), so the saved choices do not overwrite each other:
+ *
+ *  - uskifte:           heir 1, the surviving spouse, as only a spouse can
+ *  - bo av liten verdi: heir 3
+ *  - offentlig skifte:  heir 4
+ *
+ * Privat skifte is digitalised, and heir 2 fills it in, in
  * private_probate.spec.ts.
  */
 const choices = [
   {
     name: "Uskifte",
-    // Only the surviving spouse can choose uskifte, which the default heir is.
-    storageState: "storageState.json",
+    heir: heirs.spouse,
     button: "Velg uskifte",
     slug: "undivided-estate",
     heading: "Uskifte",
@@ -35,7 +40,7 @@ const choices = [
   },
   {
     name: "Bo av liten verdi",
-    storageState: heirStorageState("HEIR3_SSN"),
+    heir: heirs.lowValueEstate,
     button: "Velg bo av liten verdi",
     slug: "low-value-estate",
     heading: "Dødsbo av liten verdi",
@@ -55,7 +60,7 @@ const choices = [
   },
   {
     name: "Offentlig skifte",
-    storageState: heirStorageState("HEIR4_SSN"),
+    heir: heirs.publicProbate,
     button: "Velg offentlig skifte",
     slug: "public-probate",
     heading: "Offentlig skifte",
@@ -88,140 +93,151 @@ const openYourChoice = async (page: Page, baseURL: string | undefined) => {
 };
 
 for (const choice of choices) {
-  test.describe(choice.name, () => {
-    test.use({ storageState: choice.storageState });
-    // Choosing again can delete the saved choice (see below), so the tests run
-    // one at a time, and the test that saves the choice runs last.
-    test.describe.configure({ mode: "serial" });
+  test.describe(
+    `${choice.name}, chosen by ${heirTitle(choice.heir)}`,
+    { annotation: heirAnnotation(choice.heir) },
+    () => {
+      test.use({ storageState: choice.heir.storageState });
+      // Choosing again can delete the saved choice (see below), so the tests run
+      // one at a time, and the test that saves the choice runs last.
+      test.describe.configure({ mode: "serial" });
 
-    test.beforeEach(async ({ page, baseURL }) => {
-      const panel = await openYourChoice(page, baseURL);
+      test.beforeEach(async ({ page, baseURL }) => {
+        const panel = await openYourChoice(page, baseURL);
 
-      // The heir may have saved a choice in an earlier run, and then the tab
-      // shows that choice instead of the forms. Before anyone in the estate
-      // has started a privat skifte declaration, "Velg på nytt" only shows the
-      // forms again. After that, it asks to confirm, and confirming deletes
-      // the saved choice.
-      const chooseAgain = panel.getByRole("button", { name: /^Velg på nytt/ });
-      const choiceButton = panel.getByRole("button", { name: choice.button });
-      await expect(chooseAgain.or(choiceButton).first()).toBeVisible();
-      if (await chooseAgain.isVisible()) {
-        await chooseAgain.click();
-        const confirmDelete = panel.getByRole("button", {
-          name: "Ja, slett valg",
+        // The heir may have saved a choice in an earlier run, and then the tab
+        // shows that choice instead of the forms. Before anyone in the estate
+        // has started a privat skifte declaration, "Velg på nytt" only shows the
+        // forms again. After that, it asks to confirm, and confirming deletes
+        // the saved choice.
+        const chooseAgain = panel.getByRole("button", {
+          name: /^Velg på nytt/,
         });
-        await expect(confirmDelete.or(choiceButton).first()).toBeVisible();
-        if (await confirmDelete.isVisible()) {
-          await confirmDelete.click();
+        const choiceButton = panel.getByRole("button", { name: choice.button });
+        await expect(chooseAgain.or(choiceButton).first()).toBeVisible();
+        if (await chooseAgain.isVisible()) {
+          await chooseAgain.click();
+          const confirmDelete = panel.getByRole("button", {
+            name: "Ja, slett valg",
+          });
+          await expect(confirmDelete.or(choiceButton).first()).toBeVisible();
+          if (await confirmDelete.isVisible()) {
+            await confirmDelete.click();
+          }
         }
-      }
 
-      await choiceButton.click();
-    });
+        await choiceButton.click();
+      });
 
-    test("opens its own page", async ({ page }) => {
-      await expect(page).toHaveURL(new RegExp(`/signature/${choice.slug}$`));
-      await expect(page).toHaveTitle(/Velg skifteform - Digitalt Dødsbo/);
-      await expect(
-        page.getByRole("heading", { name: choice.heading, level: 1 })
-      ).toBeVisible();
-    });
+      test("opens its own page", async ({ page }) => {
+        await expect(page).toHaveURL(new RegExp(`/signature/${choice.slug}$`));
+        await expect(page).toHaveTitle(/Velg skifteform - Digitalt Dødsbo/);
+        await expect(
+          page.getByRole("heading", { name: choice.heading, level: 1 })
+        ).toBeVisible();
+      });
 
-    test("explains how to submit the choice", async ({ page }) => {
-      await expect(
-        page.getByRole("heading", { name: choice.intro, level: 2 })
-      ).toBeVisible();
+      test("explains how to submit the choice", async ({ page }) => {
+        await expect(
+          page.getByRole("heading", { name: choice.intro, level: 2 })
+        ).toBeVisible();
 
-      const steps = page.getByRole("region", { name: "Slik går du frem" });
-      await expect(steps.getByRole("listitem")).toHaveText(
-        [...choice.steps, "Lagre ditt valg i Digitalt dødsbo"].map(
-          (step) => new RegExp(`^${step}`)
-        )
-      );
-      await expect(
-        steps.getByRole("link", { name: choice.link.name })
-      ).toHaveAttribute("href", choice.link.href);
-    });
+        const steps = page.getByRole("region", { name: "Slik går du frem" });
+        await expect(steps.getByRole("listitem")).toHaveText(
+          [...choice.steps, "Lagre ditt valg i Digitalt dødsbo"].map(
+            (step) => new RegExp(`^${step}`)
+          )
+        );
+        await expect(
+          steps.getByRole("link", { name: choice.link.name })
+        ).toHaveAttribute("href", choice.link.href);
+      });
 
-    test("avbryt returns to the ditt valg tab", async ({ page }) => {
-      await page.getByRole("button", { name: "Avbryt" }).click();
+      test("avbryt returns to the ditt valg tab", async ({ page }) => {
+        await page.getByRole("button", { name: "Avbryt" }).click();
 
-      await expect(page).toHaveURL(/#your-choice$/);
-      await expect(
-        page.getByRole("tab", { name: "Ditt valg", exact: true })
-      ).toHaveAttribute("aria-selected", "true");
-    });
+        await expect(page).toHaveURL(/#your-choice$/);
+        await expect(
+          page.getByRole("tab", { name: "Ditt valg", exact: true })
+        ).toHaveAttribute("aria-selected", "true");
+      });
 
-    test("the link at the bottom of the page returns to the ditt valg tab", async ({
-      page,
-    }) => {
-      await page
-        .getByRole("link", { name: "Tilbake til velg skifteform" })
-        .click();
+      test("the link at the bottom of the page returns to the ditt valg tab", async ({
+        page,
+      }) => {
+        await page
+          .getByRole("link", { name: "Tilbake til velg skifteform" })
+          .click();
 
-      await expect(page).toHaveURL(/#your-choice$/);
-      await expect(
-        page.getByRole("tab", { name: "Ditt valg", exact: true })
-      ).toHaveAttribute("aria-selected", "true");
-    });
+        await expect(page).toHaveURL(/#your-choice$/);
+        await expect(
+          page.getByRole("tab", { name: "Ditt valg", exact: true })
+        ).toHaveAttribute("aria-selected", "true");
+      });
 
-    test("the breadcrumb leads back to step 4", async ({ page }) => {
-      const breadcrumb = page
-        .getByRole("navigation", { name: "Brødsmulesti" })
-        .first();
-      await expect(breadcrumb.getByRole("listitem").last()).toHaveText(
-        choice.heading
-      );
+      test("the breadcrumb leads back to step 4", async ({ page }) => {
+        const breadcrumb = page
+          .getByRole("navigation", { name: "Brødsmulesti" })
+          .first();
+        await expect(breadcrumb.getByRole("listitem").last()).toHaveText(
+          choice.heading
+        );
 
-      await breadcrumb
-        .getByRole("link", { name: "Velg skifteform", exact: true })
-        .click();
+        await breadcrumb
+          .getByRole("link", { name: "Velg skifteform", exact: true })
+          .click();
 
-      await expect(
-        page.getByRole("heading", {
-          name: "Velg skifteform for dødsboet",
-          level: 1,
-        })
-      ).toBeVisible();
-    });
+        await expect(
+          page.getByRole("heading", {
+            name: "Velg skifteform for dødsboet",
+            level: 1,
+          })
+        ).toBeVisible();
+      });
 
-    test("a saved choice is shown to the heir and the other heirs", async ({
-      page,
-      baseURL,
-    }) => {
-      const saved = page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/subapps/invoke")
-      );
-      await page.getByRole("button", { name: "Lagre" }).click();
-      expect((await saved).ok()).toBe(true);
+      test("a saved choice is shown to the heir and the other heirs", async ({
+        page,
+        baseURL,
+      }) => {
+        const saved = page.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            response.url().includes("/subapps/invoke")
+        );
+        await page.getByRole("button", { name: "Lagre" }).click();
+        expect((await saved).ok()).toBe(true);
 
-      // The last step confirms the choice, and it cannot be saved twice.
-      await expect(
-        page.getByRole("heading", { name: choice.saved, level: 2 })
-      ).toBeVisible();
-      await expect(page.getByRole("button", { name: "Lagre" })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Avbryt" })).toHaveCount(
-        0
-      );
+        // The last step confirms the choice, and it cannot be saved twice.
+        await expect(
+          page.getByRole("heading", { name: choice.saved, level: 2 })
+        ).toBeVisible();
+        await expect(page.getByRole("button", { name: "Lagre" })).toHaveCount(
+          0
+        );
+        await expect(page.getByRole("button", { name: "Avbryt" })).toHaveCount(
+          0
+        );
 
-      // The choice stays saved when step 4 is opened again.
-      const panel = await openYourChoice(page, baseURL);
-      await expect(
-        panel.getByRole("heading", { name: choice.chosen, level: 3 })
-      ).toBeVisible();
-      await expect(
-        panel.getByRole("button", { name: /^Velg på nytt/ })
-      ).toBeEnabled();
+        // The choice stays saved when step 4 is opened again.
+        const panel = await openYourChoice(page, baseURL);
+        await expect(
+          panel.getByRole("heading", { name: choice.chosen, level: 3 })
+        ).toBeVisible();
+        await expect(
+          panel.getByRole("button", { name: /^Velg på nytt/ })
+        ).toBeEnabled();
 
-      await page.getByRole("tab", { name: "Alles valg", exact: true }).click();
-      await expect(
-        page
+        // The other heirs see the choice next to this heir's name.
+        await page
+          .getByRole("tab", { name: "Alles valg", exact: true })
+          .click();
+        const heirRow = page
           .locator(visiblePanel)
           .getByRole("listitem")
-          .filter({ hasText: choice.allChoices })
-      ).not.toHaveCount(0);
-    });
-  });
+          .filter({ hasText: heirName(choice.heir) });
+        await expect(heirRow).toHaveCount(1);
+        await expect(heirRow).toContainText(choice.allChoices);
+      });
+    }
+  );
 }
