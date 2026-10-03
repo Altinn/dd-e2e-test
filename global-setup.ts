@@ -33,8 +33,17 @@ async function logIn(browser: Browser, heir: Heir) {
     name: /^Digitalt dødsbo etter /,
     level: 1,
   });
+  // tt02 can take a long time to load the estate, and the page sometimes stays
+  // on its bare "Digitalt Dødsbo" title until it is reloaded, so it gets a
+  // minute, then a reload and another minute.
   try {
-    await frontPage.waitFor({ timeout: 30_000 });
+    await frontPage.waitFor({ timeout: 60_000 }).catch(async () => {
+      console.warn(
+        `${heir.label}: the estate's front page had not loaded after 60 s; reloading`
+      );
+      await page.reload();
+      await frontPage.waitFor({ timeout: 60_000 });
+    });
   } catch {
     const screenshot = `test-results/global-setup-${heir.label
       .toLowerCase()
