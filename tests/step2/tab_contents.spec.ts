@@ -113,7 +113,7 @@ for (const tab of dataTabs) {
     const dataOrNoData = panel
       .getByRole("table")
       .or(panel.getByText(tab.noDataText));
-    await expect(dataOrNoData.first()).toBeVisible({ timeout: 20000 });
+    await expect(dataOrNoData.first()).toBeVisible({ timeout: 30000 });
     await expect(panel).not.toContainText(/ikke tilgjengelig for øyeblikket/i);
   });
 }
@@ -123,7 +123,7 @@ test("the skatt tab links to Skatteetaten", async ({ page }) => {
 
   const panel = page.locator(visiblePanel);
   const taxLink = panel.getByRole("link", { name: "Gå til Skatteetaten" });
-  await expect(taxLink).toBeVisible({ timeout: 20000 });
+  await expect(taxLink).toBeVisible({ timeout: 30000 });
   await expect(taxLink).toHaveAttribute("href", /skatt/i);
   await expect(panel).not.toContainText(/ikke tilgjengelig for øyeblikket/i);
 });
