@@ -8,23 +8,29 @@ import { heirs, type Heir } from "./heirs";
  */
 async function logIn(browser: Browser, heir: Heir) {
   const page = await browser.newPage();
-  await page.goto("https://af.tt02.altinn.no/?mock=true");
+  await page.goto("https://af.tt02.altinn.no/?mock=true", { timeout: 30_000 });
 
   // Select the high level test ID
-  await page.getByRole("link", { name: "TestID på nivå høyt" }).click();
+  await page
+    .getByRole("link", { name: "TestID på nivå høyt" })
+    .click({ timeout: 30_000 });
 
   // Fill in the SSN and authenticate
   await page
     .getByRole("textbox", { name: "Personidentifikator" })
     .fill(process.env[heir.ssnVariable]!);
-  await page.getByRole("button", { name: "Autentiser" }).click();
+  await page
+    .getByRole("button", { name: "Autentiser" })
+    .click({ timeout: 30_000 });
 
   // Open the Altinn message and click on the link to access Digitalt dødsbo
   await page
     .getByRole("link", { name: "Tilgang til Digitalt dødsbo" })
     .first()
-    .click();
-  await page.getByRole("link", { name: "Åpne Digitalt dødsbo" }).click();
+    .click({ timeout: 30_000 });
+  await page
+    .getByRole("link", { name: "Åpne Digitalt dødsbo" })
+    .click({ timeout: 30_000 });
 
   // The heir should land on the estate's front page. If not, say where they
   // landed instead, and keep a screenshot: CI uploads test-results/ when a run
