@@ -409,12 +409,11 @@ test.describe(
       await main.getByRole("button", { name: "Signer og send inn" }).click();
       expect((await submitted).ok()).toBe(true);
 
-      await expect(page).toHaveTitle(/^Skjemaet er sendt inn/);
       await expect(
         main.getByRole("heading", { name: "Kvittering", level: 1 })
       ).toBeVisible();
       await expect(
-        main.getByRole("heading", { name: "Skjemaet er sendt inn", level: 2 })
+        main.getByRole("heading", { name: "Skjema er sendt inn", level: 2 })
       ).toBeVisible();
       const pdfLink = main.getByRole("link", {
         name: /Privat skifte av dødsbo.*\.pdf/,

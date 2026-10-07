@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { heirName, heirs } from "../../heirs";
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.goto(baseURL || "/");
@@ -22,15 +23,12 @@ test("personalia tab includes the deceased's name", async ({ page }) => {
   await expect(personalInfoTable).toContainText(deceasedName.trim());
 });
 
-test("heirs tab includes the logged-in heir", async ({ page }) => {
-  const heirName = process.env.HEIR_NAME;
-  if (!heirName) {
-    throw new Error("HEIR_NAME environment variable is not defined");
-  }
-
+test("heirs tab includes every heir", async ({ page }) => {
   await page.getByRole("tab", { name: "Arvinger" }).click();
   const heirsTable = page.getByRole("table");
-  await expect(heirsTable).toContainText(heirName.trim());
+  for (const heir of Object.values(heirs)) {
+    await expect(heirsTable).toContainText(heirName(heir));
+  }
 });
 
 test("testament tab contains text", async ({ page }) => {

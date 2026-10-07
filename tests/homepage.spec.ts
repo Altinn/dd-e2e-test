@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { heirName, heirs } from "../heirs";
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.goto(baseURL || "/");
@@ -23,18 +24,20 @@ test("has heading with the name of the deceased", async ({ page }) => {
   await expect(heading).toBeVisible({ timeout: 15000 });
 });
 
-test("has the name of the logged-in heir", async ({ page }) => {
-  const heirName = process.env.HEIR_NAME;
-  if (!heirName) {
-    throw new Error("HEIR_NAME environment variable is not defined");
-  }
+for (const heir of Object.values(heirs)) {
+  test.describe(heir.label, () => {
+    test.use({ storageState: heir.storageState });
 
-  // The name is shown in the page header, next to the link to log out.
-  const header = page.getByRole("banner");
-  await expect(header.getByText(heirName.trim(), { exact: true })).toBeVisible();
-  await expect(header.getByRole("link", { name: "Logg ut" })).toBeVisible();
-});
-
+    test("has the name of the logged-in heir", async ({ page }) => {
+      // The name is shown in the page header, next to the link to log out.
+      const header = page.getByRole("banner");
+      await expect(
+        header.getByText(heirName(heir), { exact: true })
+      ).toBeVisible();
+      await expect(header.getByRole("link", { name: "Logg ut" })).toBeVisible();
+    });
+  });
+}
 
 
 

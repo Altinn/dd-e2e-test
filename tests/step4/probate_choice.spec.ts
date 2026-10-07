@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { heirName, heirs } from "../../heirs";
 
 /**
  * Step 4 on the front page: "Velg skifteform for dødsboet".
@@ -119,18 +120,15 @@ test("the skifteformer tab explains every probate form", async ({ page }) => {
   ).toHaveCount(probateForms.length);
 });
 
-test("the alles valg tab shows the choice of the logged-in heir", async ({
+test("the alles valg tab shows every heir's choice", async ({
   page,
 }) => {
-  const heirName = process.env.HEIR_NAME;
-  if (!heirName) {
-    throw new Error("HEIR_NAME environment variable is not defined");
-  }
-
   await page.getByRole("tab", { name: "Alles valg", exact: true }).click();
   const panel = page.locator(visiblePanel);
 
-  await expect(panel).toContainText(heirName.trim());
+  for (const heir of Object.values(heirs)) {
+    await expect(panel).toContainText(heirName(heir));
+  }
   // Either the heir has not chosen yet, or the choice and the debt
   // responsibility that follows from it is shown.
   await expect(panel).toContainText(
