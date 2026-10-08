@@ -23,6 +23,42 @@ test("personalia tab includes the deceased's name", async ({ page }) => {
   await expect(personalInfoTable).toContainText(deceasedName.trim());
 });
 
+test("deceased's date of death is independent of the client timezone", async ({
+  browser,
+  page,
+  baseURL,
+}) => {
+  const storageState = await page.context().storageState();
+  const dateRowsByTimezone: Record<string, string> = {};
+
+  for (const timezoneId of ["Europe/Oslo", "Pacific/Honolulu"]) {
+    const context = await browser.newContext({ storageState, timezoneId });
+    try {
+      const timezonePage = await context.newPage();
+      await timezonePage.goto(baseURL || "/");
+      await timezonePage
+        .getByRole("button", { name: "Sjekk den dødes opplysninger" })
+        .click();
+      await timezonePage.getByRole("tab", { name: "Personalia" }).click();
+
+      const dateRow = timezonePage
+        .getByRole("table")
+        .getByRole("row")
+        .filter({ hasText: "Dødsdato" });
+      await expect(dateRow).toHaveCount(1);
+      const rowText = (await dateRow.textContent())?.trim();
+      expect(rowText).toMatch(/Dødsdato.+\d{4}/);
+      dateRowsByTimezone[timezoneId] = rowText!;
+    } finally {
+      await context.close();
+    }
+  }
+
+  expect(dateRowsByTimezone["Pacific/Honolulu"]).toBe(
+    dateRowsByTimezone["Europe/Oslo"],
+  );
+});
+
 test("heirs tab includes every heir", async ({ page }) => {
   await page.getByRole("tab", { name: "Arvinger" }).click();
   const heirsTable = page.getByRole("table");
