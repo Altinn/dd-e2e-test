@@ -12,6 +12,7 @@
     "@playwright/test": "^1.53.2",
     "@types/node": "^24.0.10",
     "dotenv": "^18.0.0",
-    "pdfjs-dist": "^6.3.289"
+    "pdfjs-dist": "^6.3.289",
+    "typescript": "^5.9.3"
   }
 }

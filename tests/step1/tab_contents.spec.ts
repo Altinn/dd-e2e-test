@@ -31,6 +31,49 @@ test("heirs tab includes every heir", async ({ page }) => {
   }
 });
 
+test("heirs' dates of birth are independent of the client timezone", async ({
+  browser,
+  page,
+  baseURL,
+}) => {
+  const storageState = await page.context().storageState();
+  const dateRowsByTimezone: Record<string, string[]> = {};
+  const datePattern = /\b\d{2}\.\d{2}\.\d{4}\b/;
+
+  for (const timezoneId of ["Europe/Oslo", "Pacific/Honolulu"]) {
+    const context = await browser.newContext({ storageState, timezoneId });
+    try {
+      const timezonePage = await context.newPage();
+      await timezonePage.goto(baseURL || "/");
+      await timezonePage
+        .getByRole("button", { name: "Sjekk den dødes opplysninger" })
+        .click();
+      await timezonePage.getByRole("tab", { name: "Arvinger" }).click();
+
+      const heirsTable = timezonePage.getByRole("table");
+      const rows = await heirsTable.getByRole("row").allTextContents();
+      const dateRows = rows.filter((row) => datePattern.test(row));
+
+      expect(dateRows.length).toBeGreaterThan(0);
+      for (const heir of Object.values(heirs)) {
+        const name = heirName(heir);
+        await expect(heirsTable).toContainText(name);
+        expect(
+          dateRows.some((row) => row.includes(name) && datePattern.test(row)),
+        ).toBe(true);
+      }
+
+      dateRowsByTimezone[timezoneId] = dateRows.map((row) => row.trim());
+    } finally {
+      await context.close();
+    }
+  }
+
+  expect(dateRowsByTimezone["Pacific/Honolulu"]).toEqual(
+    dateRowsByTimezone["Europe/Oslo"],
+  );
+});
+
 test("testament tab contains text", async ({ page }) => {
   const txt = "Testament og arvepakt";
   await page.getByRole("tab", { name: "Testament" }).click();
