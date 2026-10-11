@@ -1,27 +1,63 @@
-import { test, expect } from "@playwright/test";
-import { heirName, heirs } from "../../heirs";
+import { test, expect, type Page } from "@playwright/test";
+import { heirName, heirs, languageHeirs, languageName } from "../../heirs";
+import { containing, texts } from "../../texts";
 
-test.beforeEach(async ({ page, baseURL }) => {
-  await page.goto(baseURL || "/");
-  await page
-    .getByRole("button", { name: "Sjekk den dødes opplysninger" })
-    .click();
-});
+/** Opens the deceased's information from the front page. */
+const openDeceasedInformation = async (page: Page, button: string) => {
+  await page.getByRole("button", { name: button }).click();
+};
 
-test("has title", async ({ page }) => {
-  await expect(page).toHaveTitle(/den dødes opplysninger/i);
-});
+for (const heir of languageHeirs) {
+  const t = texts[heir.language].deceasedInformation;
 
-test("personalia tab includes the deceased's name", async ({ page }) => {
-  const deceasedName = process.env.DECEASED_NAME;
-  if (!deceasedName) {
-    throw new Error("DECEASED_NAME environment variable is not defined");
-  }
+  test.describe(languageName(heir.language), () => {
+    test.use({ storageState: heir.storageState });
 
-  await page.getByRole("tab", { name: "Personalia" }).click();
-  const personalInfoTable = page.getByRole("table");
-  await expect(personalInfoTable).toContainText(deceasedName.trim());
-});
+    test.beforeEach(async ({ page, baseURL }) => {
+      await page.goto(baseURL || "/");
+      await openDeceasedInformation(page, t.button);
+    });
+
+    test("has title", async ({ page }) => {
+      await expect(page).toHaveTitle(containing(t.pageTitle));
+    });
+
+    test("personalia tab includes the deceased's name", async ({ page }) => {
+      const deceasedName = process.env.DECEASED_NAME;
+      if (!deceasedName) {
+        throw new Error("DECEASED_NAME environment variable is not defined");
+      }
+
+      await page.getByRole("tab", { name: t.personalia }).click();
+      const personalInfoTable = page.getByRole("table");
+      await expect(personalInfoTable).toContainText(deceasedName.trim());
+      await expect(personalInfoTable).toContainText(t.dateOfDeath);
+    });
+
+    test("heirs tab includes every heir", async ({ page }) => {
+      await page.getByRole("tab", { name: t.heirs }).click();
+      const heirsTable = page.getByRole("table");
+      for (const other of Object.values(heirs)) {
+        await expect(heirsTable).toContainText(heirName(other));
+      }
+    });
+
+    test("testament tab contains text", async ({ page }) => {
+      await page.getByRole("tab", { name: t.testament }).click();
+      const testamentContent = page.getByRole("document");
+      await expect(testamentContent).toContainText(t.testamentText);
+    });
+
+    test("ektepakt tab contains text", async ({ page }) => {
+      await page.getByRole("tab", { name: t.marriagePact }).click();
+      const ektepaktContent = page.getByRole("document");
+      await expect(ektepaktContent).toContainText(t.marriagePactText);
+    });
+  });
+}
+
+// The dates do not depend on the language, so they are checked in bokmål.
+const nb = texts.nb.deceasedInformation;
 
 test("deceased's date of death is independent of the client timezone", async ({
   browser,
@@ -36,10 +72,8 @@ test("deceased's date of death is independent of the client timezone", async ({
     try {
       const timezonePage = await context.newPage();
       await timezonePage.goto(baseURL || "/");
-      await timezonePage
-        .getByRole("button", { name: "Sjekk den dødes opplysninger" })
-        .click();
-      await timezonePage.getByRole("tab", { name: "Personalia" }).click();
+      await openDeceasedInformation(timezonePage, nb.button);
+      await timezonePage.getByRole("tab", { name: nb.personalia }).click();
 
       const dateRow = timezonePage
         .getByRole("table")
@@ -55,16 +89,8 @@ test("deceased's date of death is independent of the client timezone", async ({
   }
 
   expect(dateRowsByTimezone["Pacific/Honolulu"]).toBe(
-    dateRowsByTimezone["Europe/Oslo"],
+    dateRowsByTimezone["Europe/Oslo"]
   );
-});
-
-test("heirs tab includes every heir", async ({ page }) => {
-  await page.getByRole("tab", { name: "Arvinger" }).click();
-  const heirsTable = page.getByRole("table");
-  for (const heir of Object.values(heirs)) {
-    await expect(heirsTable).toContainText(heirName(heir));
-  }
 });
 
 test("heirs' dates of birth are independent of the client timezone", async ({
@@ -81,10 +107,8 @@ test("heirs' dates of birth are independent of the client timezone", async ({
     try {
       const timezonePage = await context.newPage();
       await timezonePage.goto(baseURL || "/");
-      await timezonePage
-        .getByRole("button", { name: "Sjekk den dødes opplysninger" })
-        .click();
-      await timezonePage.getByRole("tab", { name: "Arvinger" }).click();
+      await openDeceasedInformation(timezonePage, nb.button);
+      await timezonePage.getByRole("tab", { name: nb.heirs }).click();
 
       const heirsTable = timezonePage.getByRole("table");
       const rows = await heirsTable.getByRole("row").allTextContents();
@@ -95,7 +119,7 @@ test("heirs' dates of birth are independent of the client timezone", async ({
         const name = heirName(heir);
         await expect(heirsTable).toContainText(name);
         expect(
-          dateRows.some((row) => row.includes(name) && datePattern.test(row)),
+          dateRows.some((row) => row.includes(name) && datePattern.test(row))
         ).toBe(true);
       }
 
@@ -106,20 +130,6 @@ test("heirs' dates of birth are independent of the client timezone", async ({
   }
 
   expect(dateRowsByTimezone["Pacific/Honolulu"]).toEqual(
-    dateRowsByTimezone["Europe/Oslo"],
+    dateRowsByTimezone["Europe/Oslo"]
   );
-});
-
-test("testament tab contains text", async ({ page }) => {
-  const txt = "Testament og arvepakt";
-  await page.getByRole("tab", { name: "Testament" }).click();
-  const testamentContent = page.getByRole("document");
-  await expect(testamentContent).toContainText(txt.trim());
-});
-
-test("ektepakt tab contains text", async ({ page }) => {
-  const txt = "Tinglyste ektepakter";
-  await page.getByRole("tab", { name: "Ektepakt" }).click();
-  const ektepaktContent = page.getByRole("document");
-  await expect(ektepaktContent).toContainText(txt.trim());
 });

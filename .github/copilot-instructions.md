@@ -12,7 +12,7 @@ Before running tests, create `.env` from `.env.example` and fill in the required
 
 - `DECEASED_NAME`
 - `HEIR_SSN`, `HEIR_NAME`
-- `HEIR2_SSN`, `HEIR3_SSN`, `HEIR4_SSN`
+- `HEIR2_SSN`, `HEIR3_SSN`, `HEIR4_SSN`, `HEIR5_SSN` (Heir 5 has nynorsk as their Altinn Profile language)
 
 Typical commands:
 
@@ -32,7 +32,7 @@ The important project structure is:
 
 - `playwright.config.ts`: central Playwright configuration. It loads `.env`, enables `globalSetup`, configures `testDir: ./tests`, sets `baseURL` from `BASE_URL`, and uses Norwegian timezone settings.
 - `global-setup.ts`: logs in to the Altinn test environment as each heir, saves a browser `storageState` file, and sets `BASE_URL` plus the heir names once the app loads.
-- `heirs.ts`: defines the four heirs used by the suite (`Heir 1`, `Heir 2`, `Heir 3`, `Heir 4`), their relationship to the deceased, the environment variable names they use, and the session file each should persist.
+- `heirs.ts`: defines the five heirs used by the suite (`Heir 1` to `Heir 5`), their relationship to the deceased, their Altinn Profile language, the environment variable names they use, and the session file each should persist.
 - `tests/`: test files are grouped by workflow step (`homepage`, `step1`, `step2`, `step3`, `step4`, plus `link-validation` and `axe`). This mirrors the estate flow rather than a component-centric layout.
 - `storageState*.json`: generated session files. These are not source-of-truth app state; they are per-heir login artifacts created by the setup step.
 - `infra/`: Docker setup used to bring up the surrounding Digitalt Dødsbo environment for local testing, as described in the README.
@@ -42,6 +42,7 @@ The broader app flow is: authenticate as a test heir, land on a shared estate, t
 ## Key conventions
 
 - Prefer `@playwright/test` locators with semantic queries (`getByRole`, `getByText`, `getByLabel`, `getByTab`) rather than brittle CSS selectors.
+- `texts.ts` holds the text the tests assert on, in bokmål and nynorsk. Tests that check text run once per language (`languageHeirs`): Heir 1 in bokmål, Heir 5 in nynorsk. Add new texts to both languages, taken from the app's `resource.nb.json`/`resource.nn.json`.
 - The app is localized in Norwegian; tests assert on Norwegian titles, headings, tab names, and role names such as `Personalia`, `Arvinger`, `Testament`, and `Sjekk den dødes opplysninger`.
 - The suite depends on environment variables and shared estate data. If a required variable is missing, the setup or a test should fail clearly instead of proceeding with a partially configured run.
 - Use the heir-specific flow. The same estate is shared by multiple heirs, and each heir is assigned a single probate path or action (`uskifte`, `privat skifte`, `bo av liten verdi`, `offentlig skifte`). Do not assume the estate state persists between runs. The estate resets nightly.
