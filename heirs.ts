@@ -1,5 +1,8 @@
+/** The languages the app and its correspondence are written in. */
+export type Language = "nb" | "nn";
+
 /**
- * The four heirs of the test estate that the tests log in as, and what each
+ * The five heirs of the test estate that the tests log in as, and what each
  * one is used for. They share one estate, which is reset every night at 03:00
  * Oslo time, so each probate choice is made by its own heir and the choices do
  * not overwrite each other.
@@ -15,6 +18,11 @@ export type Heir = {
   relation: string;
   /** What the heir is used for. */
   purpose: string;
+  /**
+   * The heir's language in Altinn Profile. The app and the correspondence
+   * are in this language for the heir.
+   */
+  language: Language;
   ssnVariable: string;
   nameVariable: string;
   storageState: string;
@@ -27,6 +35,7 @@ export const heirs = {
     purpose:
       "Logs in for every test that is not about one of the other heirs, and " +
       "chooses uskifte, which only a surviving spouse or partner can.",
+    language: "nb",
     ssnVariable: "HEIR_SSN",
     nameVariable: "HEIR_NAME",
     storageState: "storageState.json",
@@ -38,6 +47,7 @@ export const heirs = {
       "Fills in, signs and submits the privat skifte declaration, and checks " +
       "the PDF the district court receives. Signing is final, so this heir " +
       "must be unsigned when the run starts, i.e. after the nightly reset.",
+    language: "nb",
     ssnVariable: "HEIR2_SSN",
     nameVariable: "HEIR2_NAME",
     storageState: "storageState.heir2.json",
@@ -46,6 +56,7 @@ export const heirs = {
     label: "Heir 3",
     relation: "child",
     purpose: "Chooses bo av liten verdi, which is submitted on paper.",
+    language: "nb",
     ssnVariable: "HEIR3_SSN",
     nameVariable: "HEIR3_NAME",
     storageState: "storageState.heir3.json",
@@ -55,11 +66,33 @@ export const heirs = {
     relation: "child",
     purpose:
       "Chooses offentlig skifte, which is requested by contacting the court.",
+    language: "nb",
     ssnVariable: "HEIR4_SSN",
     nameVariable: "HEIR4_NAME",
     storageState: "storageState.heir4.json",
   },
+  nynorsk: {
+    label: "Heir 5",
+    relation: "grandchild",
+    purpose:
+      "Has nynorsk as their language in Altinn Profile, and checks the app " +
+      "and the correspondence in nynorsk. Does not choose a probate form.",
+    language: "nn",
+    ssnVariable: "HEIR5_SSN",
+    nameVariable: "HEIR5_NAME",
+    storageState: "storageState.heir5.json",
+  },
 } satisfies Record<string, Heir>;
+
+/**
+ * One heir per language, for the tests that check the app's text in each
+ * language: heir 1 in bokmål and heir 5 in nynorsk.
+ */
+export const languageHeirs = [heirs.spouse, heirs.nynorsk];
+
+/** "bokmål" or "nynorsk", for test titles. */
+export const languageName = (language: Language) =>
+  language === "nb" ? "bokmål" : "nynorsk";
 
 /** The heir's name as the app shows it, set by the global setup. */
 export const heirName = (heir: Heir) => {

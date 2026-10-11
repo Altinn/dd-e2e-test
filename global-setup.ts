@@ -1,5 +1,7 @@
 import { chromium, type Browser, type FullConfig } from "@playwright/test";
+import { logInToAltinn } from "./altinn";
 import { heirs, type Heir } from "./heirs";
+import { texts } from "./texts";
 
 /**
  * Logs in to Digitalt dødsbo as the heir, saves the session to the heir's
@@ -8,35 +10,23 @@ import { heirs, type Heir } from "./heirs";
  */
 async function logIn(browser: Browser, heir: Heir) {
   const page = await browser.newPage();
-  await page.goto("https://af.tt02.altinn.no/?mock=true", { timeout: 30_000 });
-
-  // Select the high level test ID
-  await page
-    .getByRole("link", { name: "TestID på nivå høyt" })
-    .click({ timeout: 30_000 });
-
-  // Fill in the SSN and authenticate
-  await page
-    .getByRole("textbox", { name: "Personidentifikator" })
-    .fill(process.env[heir.ssnVariable]!);
-  await page
-    .getByRole("button", { name: "Autentiser" })
-    .click({ timeout: 30_000 });
+  await logInToAltinn(page, process.env[heir.ssnVariable]!);
+  const t = texts[heir.language];
 
   // Open the Altinn message and click on the link to access Digitalt dødsbo
   await page
-    .getByRole("link", { name: "Tilgang til Digitalt dødsbo" })
+    .getByRole("link", { name: t.correspondence.accessTitle })
     .first()
     .click({ timeout: 30_000 });
   await page
-    .getByRole("link", { name: "Åpne Digitalt dødsbo" })
+    .getByRole("link", { name: t.correspondence.openApp })
     .click({ timeout: 30_000 });
 
   // The heir should land on the estate's front page. If not, say where they
   // landed instead, and keep a screenshot: CI uploads test-results/ when a run
   // fails, while an error in the global setup has no trace of its own.
   const frontPage = page.getByRole("heading", {
-    name: /^Digitalt dødsbo etter /,
+    name: new RegExp(`^${t.home.heading} `),
     level: 1,
   });
   // tt02 can take a long time to load the estate, and the page sometimes stays

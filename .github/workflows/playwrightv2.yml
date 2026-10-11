@@ -26,10 +26,12 @@ jobs:
       HEIR2_NAME: ${{ vars.HEIR2_NAME }}
       HEIR3_NAME: ${{ vars.HEIR3_NAME }}
       HEIR4_NAME: ${{ vars.HEIR4_NAME }}
+      HEIR5_NAME: ${{ vars.HEIR5_NAME }}
       HEIR_SSN: ${{ vars.HEIR_SSN }}
       HEIR2_SSN: ${{ vars.HEIR2_SSN }}
       HEIR3_SSN: ${{ vars.HEIR3_SSN }}
       HEIR4_SSN: ${{ vars.HEIR4_SSN }}
+      HEIR5_SSN: ${{ vars.HEIR5_SSN }}
     strategy:
       fail-fast: false
       matrix:

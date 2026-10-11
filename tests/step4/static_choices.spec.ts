@@ -6,6 +6,7 @@ import {
   heirTitle,
   type Heir,
 } from "../../heirs";
+import { containing, escapeRegExp, texts } from "../../texts";
 
 /**
  * The probate forms on the "Ditt valg" tab in step 4 that are not digitalised.
@@ -295,6 +296,120 @@ for (const choice of choices) {
         await openChoicePage(page, baseURL, choice);
         await saveChoice(page, choice);
         await expectChosen(page, baseURL, choice, choice.heir);
+      });
+    }
+  );
+}
+
+/**
+ * The pages of the static choices in nynorsk, opened by heir 5. Heir 5 does
+ * not save a choice, so these tests only read the pages. Heir 5 is not the
+ * surviving spouse, and is not offered uskifte.
+ */
+const nynorsk = heirs.nynorsk;
+const nn = texts.nn;
+const nynorskPages = [
+  {
+    ...nn.staticChoice.lowValueEstate,
+    choice: nn.probate.choices[2],
+    slug: "low-value-estate",
+    href: choices[1].link.href,
+  },
+  {
+    ...nn.staticChoice.publicProbate,
+    choice: nn.probate.choices[3],
+    slug: "public-probate",
+    href: choices[2].link.href,
+  },
+];
+
+for (const choicePage of nynorskPages) {
+  test.describe(
+    `${choicePage.choice} in nynorsk, opened by ${heirTitle(nynorsk)}`,
+    { annotation: heirAnnotation(nynorsk) },
+    () => {
+      test.use({ storageState: nynorsk.storageState });
+
+      test.beforeEach(async ({ page, baseURL }) => {
+        await page.goto(baseURL || "/");
+        await page.getByRole("button", { name: nn.probate.button }).click();
+        await page
+          .getByRole("tab", { name: nn.probate.tabs.yourChoice.name, exact: true })
+          .click();
+        await page
+          .locator(visiblePanel)
+          .getByRole("button", { name: nn.probate.choose(choicePage.choice) })
+          .click();
+      });
+
+      test("opens its own page", async ({ page }) => {
+        await expect(page).toHaveURL(
+          new RegExp(`/signature/${choicePage.slug}$`)
+        );
+        await expect(page).toHaveTitle(containing(nn.probate.pageTitle));
+        await expect(
+          page.getByRole("heading", { name: choicePage.heading, level: 1 })
+        ).toBeVisible();
+      });
+
+      test("explains how to submit the choice", async ({ page }) => {
+        await expect(
+          page.getByRole("heading", { name: choicePage.intro, level: 2 })
+        ).toBeVisible();
+
+        const steps = page.getByRole("region", {
+          name: nn.staticChoice.howToProceed,
+        });
+        await expect(steps.getByRole("listitem")).toHaveText(
+          [...choicePage.steps, nn.staticChoice.saveChoiceStep].map(
+            (step) => new RegExp(`^${escapeRegExp(step)}`)
+          )
+        );
+        // The form is the same in both languages.
+        await expect(
+          steps.getByRole("link", { name: choicePage.link })
+        ).toHaveAttribute("href", choicePage.href);
+      });
+
+      test("avbryt returns to the ditt val tab", async ({ page }) => {
+        await page
+          .getByRole("button", { name: nn.staticChoice.cancel })
+          .click();
+
+        await expect(page).toHaveURL(/#your-choice$/);
+        await expect(
+          page.getByRole("tab", {
+            name: nn.probate.tabs.yourChoice.name,
+            exact: true,
+          })
+        ).toHaveAttribute("aria-selected", "true");
+      });
+
+      test("the link at the bottom of the page returns to the ditt val tab", async ({
+        page,
+      }) => {
+        await page
+          .getByRole("link", { name: nn.staticChoice.backToProbate })
+          .click();
+
+        await expect(page).toHaveURL(/#your-choice$/);
+      });
+
+      test("the breadcrumb leads back to step 4", async ({ page }) => {
+        const breadcrumb = page
+          .getByRole("navigation", { name: nn.breadcrumbs })
+          .first();
+        await expect(breadcrumb.getByRole("listitem").last()).toHaveText(
+          choicePage.heading
+        );
+
+        await breadcrumb
+          .getByRole("link", { name: nn.probate.breadcrumb, exact: true })
+          .click();
+
+        await expect(
+          page.getByRole("heading", { name: nn.probate.heading, level: 1 })
+        ).toBeVisible();
       });
     }
   );
