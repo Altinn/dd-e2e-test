@@ -157,14 +157,14 @@ const formPages: {
       await select(
         page,
         main.getByRole("combobox", { name: "Type ektepakt" }),
-        "Ikke tinglyst ektepakt"
+        "Ikke-tinglyst ektepakt"
       );
       await main
         .getByRole("textbox", { name: "DD.MM.YYYY" })
         .fill("15.06.1990");
     },
     details: [
-      ["Type ektepakt", "Ikke tinglyst ektepakt"],
+      ["Type ektepakt", "Ikke-tinglyst ektepakt"],
       ["Dato på dokumentet", "15.06.1990"],
     ],
   },
