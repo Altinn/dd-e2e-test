@@ -141,8 +141,6 @@ const goToTab = async(page: Page, tabName: string) => {
         .click();
 }
 
-test.use({ screenshot: 'only-on-failure' });
-
 test.beforeEach(async ({ page, baseURL }) => {
   await page.goto(baseURL || "/", { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle(/Startside - Digitalt Dødsbo/, { timeout: 15000 });

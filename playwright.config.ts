@@ -35,6 +35,9 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
 
+    /* The failed tests' screenshots are shown in the report and in Slack. */
+    screenshot: "only-on-failure",
+
     storageState: "storageState.json",
 
     /* The heirs are in Norway, and the server writes Norwegian times into the

@@ -162,7 +162,7 @@ class PlainHtmlReporter implements Reporter {
       heirSummary.length === 0
         ? ""
         : `<h2>Heirs</h2>
-<p>The tests log in as four heirs of the same test estate, which is reset every night at 03:00 Oslo time. Each probate choice is made by its own heir, so the choices do not overwrite each other.</p>
+<p>The tests log in as five heirs of the same test estate, which is reset every night at 03:00 Oslo time. Each probate choice is made by its own heir, so the choices do not overwrite each other.</p>
 <table>
 <thead><tr><th>Heir</th><th>Purpose</th><th>Tests</th></tr></thead>
 <tbody>
