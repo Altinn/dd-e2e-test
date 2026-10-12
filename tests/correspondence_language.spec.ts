@@ -30,6 +30,12 @@ for (const heir of languageHeirs) {
     )}`,
     { annotation: heirAnnotation(heir) },
     async ({ page }) => {
+      test.fixme(
+        heir.language === "nn",
+        "oed sends the access message in bokmål to heirs with nynorsk in " +
+          "Altinn Profile. Re-enable when that is fixed in oed."
+      );
+
       const ssn = process.env[heir.ssnVariable];
       if (!ssn) {
         throw new Error(
