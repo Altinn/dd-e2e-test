@@ -13,15 +13,6 @@ async function logIn(browser: Browser, heir: Heir) {
   await logInToAltinn(page, process.env[heir.ssnVariable]!);
   const t = texts[heir.language];
 
-  // Open the Altinn message and click on the link to access Digitalt dødsbo
-  await page
-    .getByRole("link", { name: t.correspondence.accessTitle })
-    .first()
-    .click({ timeout: 30_000 });
-  await page
-    .getByRole("link", { name: t.correspondence.openApp })
-    .click({ timeout: 30_000 });
-
   // The heir should land on the estate's front page. If not, say where they
   // landed instead, and keep a screenshot: CI uploads test-results/ when a run
   // fails, while an error in the global setup has no trace of its own.
@@ -29,10 +20,19 @@ async function logIn(browser: Browser, heir: Heir) {
     name: new RegExp(`^${t.home.heading} `),
     level: 1,
   });
-  // tt02 can take a long time to load the estate, and the page sometimes stays
-  // on its bare "Digitalt Dødsbo" title until it is reloaded, so it gets a
-  // minute, then a reload and another minute.
   try {
+    // Open the Altinn message and click on the link to access Digitalt dødsbo
+    await page
+      .getByRole("link", { name: t.correspondence.accessTitle })
+      .first()
+      .click({ timeout: 30_000 });
+    await page
+      .getByRole("link", { name: t.correspondence.openApp })
+      .click({ timeout: 30_000 });
+
+    // tt02 can take a long time to load the estate, and the page sometimes stays
+    // on its bare "Digitalt Dødsbo" title until it is reloaded, so it gets a
+    // minute, then a reload and another minute.
     await frontPage.waitFor({ timeout: 60_000 }).catch(async () => {
       console.warn(
         `${heir.label}: the estate's front page had not loaded after 60 s; reloading`
@@ -40,7 +40,7 @@ async function logIn(browser: Browser, heir: Heir) {
       await page.reload();
       await frontPage.waitFor({ timeout: 60_000 });
     });
-  } catch {
+  } catch (error) {
     const screenshot = `test-results/global-setup-${heir.label
       .toLowerCase()
       .replace(/\s+/g, "-")}.png`;
@@ -48,7 +48,8 @@ async function logIn(browser: Browser, heir: Heir) {
     throw new Error(
       `${heir.label} (${heir.ssnVariable}) did not reach the estate's front ` +
         `page after logging in. Landed on ${page.url()} with the title ` +
-        `"${await page.title()}". Screenshot: ${screenshot}`
+        `"${await page.title()}". Screenshot: ${screenshot}`,
+      { cause: error }
     );
   }
 
