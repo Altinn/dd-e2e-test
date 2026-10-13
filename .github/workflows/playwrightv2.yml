@@ -90,6 +90,17 @@ jobs:
           path: test-results/
           retention-days: 7
 
+      # A failed global setup is not part of any test, so its screenshots are
+      # not in the blob report. The merge job adds them to the plain report.
+      - name: Upload global setup screenshots
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: global-setup-screenshots-${{ matrix.shard }}
+          path: test-results/global-setup-*.png
+          retention-days: 1
+          if-no-files-found: ignore
+
   merge-report:
     name: Merge reports
     if: ${{ !cancelled() }}
@@ -119,6 +130,15 @@ jobs:
         with:
           path: all-blob-reports
           pattern: blob-report-*
+          merge-multiple: true
+
+      # Every shard runs the global setup, so the same heir's screenshot can
+      # come from several shards; merging keeps one of each.
+      - name: Download global setup screenshots
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: global-setup-screenshots
+          pattern: global-setup-screenshots-*
           merge-multiple: true
 
       # Config file rather than --reporter=html,json so the JSON lands in a

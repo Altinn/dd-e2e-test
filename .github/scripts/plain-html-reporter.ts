@@ -7,6 +7,7 @@ import type {
   Reporter,
   Suite,
   TestCase,
+  TestError,
 } from "@playwright/test/reporter";
 
 /**
@@ -26,6 +27,12 @@ import type {
  * of each failed test for the Slack message to show (see report-stats.js).
  * Screenshots are named after their content, so Slack, which caches images by
  * address, never shows an old screenshot under a reused name.
+ *
+ * Errors outside the tests, such as a failed login in the global setup, are
+ * shown above the tests. The global setup's screenshots are not attached to
+ * any test, so CI downloads them into the folder named by the
+ * `globalSetupScreenshots` option, and they are shown with those errors and
+ * listed in screenshots.json too.
  *
  * Used by `playwright merge-reports`; see playwright.merge.config.ts.
  */
@@ -77,12 +84,31 @@ class PlainHtmlReporter implements Reporter {
   private suite: Suite | undefined;
   private readonly outputFolder: string;
   private readonly sections: Record<string, string>;
+  private readonly globalSetupScreenshots: string | undefined;
+  private readonly runErrors: TestError[] = [];
 
   constructor(
-    options: { outputFolder?: string; sections?: Record<string, string> } = {}
+    options: {
+      outputFolder?: string;
+      sections?: Record<string, string>;
+      globalSetupScreenshots?: string;
+    } = {}
   ) {
     this.outputFolder = path.resolve(options.outputFolder ?? "plain-report");
     this.sections = options.sections ?? {};
+    this.globalSetupScreenshots = options.globalSetupScreenshots;
+  }
+
+  /** Copies a screenshot into the report, named after its content. */
+  private saveScreenshot(source: string) {
+    const content = fs.readFileSync(source);
+    const name = `screenshots/${crypto
+      .createHash("sha256")
+      .update(content)
+      .digest("hex")
+      .slice(0, 16)}${path.extname(source)}`;
+    fs.writeFileSync(path.join(this.outputFolder, name), content);
+    return name;
   }
 
   private sectionName(file: string) {
@@ -95,6 +121,10 @@ class PlainHtmlReporter implements Reporter {
 
   onBegin(_config: FullConfig, suite: Suite) {
     this.suite = suite;
+  }
+
+  onError(error: TestError) {
+    this.runErrors.push(error);
   }
 
   onEnd(result: FullResult) {
@@ -206,13 +236,7 @@ ${heirSummary.join("\n")}
           ) {
             continue;
           }
-          const content = fs.readFileSync(attachment.path);
-          const name = `screenshots/${crypto
-            .createHash("sha256")
-            .update(content)
-            .digest("hex")
-            .slice(0, 16)}${path.extname(attachment.path)}`;
-          fs.writeFileSync(path.join(this.outputFolder, name), content);
+          const name = this.saveScreenshot(attachment.path);
           if (test.outcome() === "unexpected") {
             const testName = `${this.sectionName(fileOf(test))} — ${test
               .titlePath()
@@ -234,6 +258,49 @@ ${heirSummary.join("\n")}
       });
       return parts.join("");
     };
+
+    // Every shard runs the global setup, so the same error can come once per
+    // shard; it is shown once, with how many shards reported it.
+    const runErrors = new Map<string, number>();
+    for (const error of this.runErrors) {
+      const text = stripAnsi(error.message ?? error.value ?? "").trim();
+      if (text) runErrors.set(text, (runErrors.get(text) ?? 0) + 1);
+    }
+    const setupFolder = this.globalSetupScreenshots
+      ? path.resolve(this.globalSetupScreenshots)
+      : undefined;
+    const setupScreenshots =
+      setupFolder && fs.existsSync(setupFolder)
+        ? fs
+            .readdirSync(setupFolder)
+            .filter((file) => /\.(png|jpe?g)$/i.test(file))
+            .sort()
+        : [];
+    const setupImages = setupScreenshots.map((file) => {
+      const name = this.saveScreenshot(path.join(setupFolder!, file));
+      // "global-setup-heir-5.png" → "Global setup — heir 5"
+      const label = `Global setup — ${path
+        .parse(file)
+        .name.replace(/^global-setup-/, "")
+        .replace(/-/g, " ")}`;
+      failedScreenshots.push({ test: label, path: name });
+      return `<p>${escapeHtml(label)}<br><a href="${name}"><img src="${name}" alt="${escapeHtml(
+        label
+      )}" width="400"></a></p>`;
+    });
+    const runErrorSection =
+      runErrors.size === 0 && setupImages.length === 0
+        ? ""
+        : `<h2>Errors outside the tests</h2>
+${[...runErrors]
+  .map(
+    ([text, times]) =>
+      `<pre>${escapeHtml(text)}</pre>${
+        times > 1 ? `<p><small>Reported by ${times} shards.</small></p>` : ""
+      }`
+  )
+  .join("\n")}
+${setupImages.join("\n")}`;
 
     const sections = files.map((file) => {
       const rows = byFile.get(file)!.map((test) => {
@@ -287,6 +354,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 <p>${counts.passed} passed, ${counts.failed} failed, ${counts.flaky} flaky, ${
       counts.skipped
     } skipped.</p>
+${runErrorSection}
 ${heirSection}
 ${sections.join("\n")}
 </body>

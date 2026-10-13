@@ -21,6 +21,8 @@ export default defineConfig({
       "./.github/scripts/plain-html-reporter.ts",
       {
         outputFolder: "plain-report",
+        // Downloaded by the merge job from the test jobs' artifacts.
+        globalSetupScreenshots: "global-setup-screenshots",
         // The report's sections, in the order of the steps on the front page.
         sections: {
           "homepage.spec.ts": "Front page",
