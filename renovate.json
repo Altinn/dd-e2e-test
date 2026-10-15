@@ -2,5 +2,21 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>Altinn/renovate-config"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep the devcontainer's baked-in Playwright browser in step with @playwright/test",
+      "managerFilePatterns": ["/^\\.devcontainer/devcontainer\\.json$/"],
+      "matchStrings": ["\"PLAYWRIGHT_VERSION\":\\s*\"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "playwright",
+      "datasourceTemplate": "npm"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["playwright", "@playwright/test"],
+      "groupName": "playwright"
+    }
   ]
 }

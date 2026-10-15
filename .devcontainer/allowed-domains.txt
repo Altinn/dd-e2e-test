@@ -1,0 +1,38 @@
+# Hosts the dev container may reach over any port, one per line. GitHub's ranges come from
+# api.github.com/meta and need no entry here. The file is baked into the image, so a change
+# takes effect only after a rebuild.
+
+# Claude Code, npm and VS Code
+registry.npmjs.org
+api.anthropic.com
+sentry.io
+statsig.com
+marketplace.visualstudio.com
+vscode.blob.core.windows.net
+update.code.visualstudio.com
+
+# Altinn tt02
+tt02.altinn.no
+af.tt02.altinn.no
+platform.tt02.altinn.no
+digdir.apps.tt02.altinn.no
+altinncdn.no
+
+# ID-porten test
+test.idporten.no
+login.test.idporten.no
+testid.test.idporten.no
+static.idporten.no
+
+# Altinn docs
+altinn.studio
+docs.altinn.studio
+altinn.github.io
+
+# Playwright browser downloads
+cdn.playwright.dev
+playwright.download.prss.microsoft.com
+
+# Domstolene
+domstol.no
+www.domstol.no

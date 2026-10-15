@@ -45,3 +45,5 @@ infra/services
 plain-report/
 blob-report/
 merged-report.json
+.claude/settings.local.json
+DEVCONTAINER-REVIEW.md

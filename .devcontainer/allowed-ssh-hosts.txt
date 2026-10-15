@@ -1,0 +1,3 @@
+# Hosts the dev container may reach on tcp/22, one per line. Empty means no outbound SSH.
+# The git remote uses HTTPS, so nothing needs SSH today. The file is baked into the image,
+# so a change takes effect only after a rebuild.
