@@ -19,5 +19,24 @@
       "Bash(gh pr view:*)",
       "Bash(gh api repos/Altinn/:*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-keyvault-secrets.js"
+            ],
+            "statusMessage": "Checking for Key Vault secret access",
+            "timeout": 15,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
   }
 }
