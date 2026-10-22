@@ -74,7 +74,7 @@ jobs:
       # Each shard uploads its blob report for the merge job to consume.
       - name: Upload blob report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: blob-report-${{ matrix.shard }}
           path: blob-report/
@@ -84,7 +84,7 @@ jobs:
       # `trace: 'on-first-retry'` (or similar). Upload them only when relevant.
       - name: Upload traces
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: traces-${{ matrix.shard }}
           path: test-results/
@@ -94,7 +94,7 @@ jobs:
       # not in the blob report. The merge job adds them to the plain report.
       - name: Upload global setup screenshots
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: global-setup-screenshots-${{ matrix.shard }}
           path: test-results/global-setup-*.png
@@ -151,14 +151,14 @@ jobs:
         run: node .github/scripts/report-stats.js merged-report.json plain-report/screenshots.json >> "$GITHUB_OUTPUT"
 
       - name: Upload HTML report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
 
       - name: Upload plain report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: plain-report
           path: plain-report/
