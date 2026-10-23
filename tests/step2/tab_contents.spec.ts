@@ -97,13 +97,20 @@ for (const heir of languageHeirs) {
 
         // The data is fetched from an external register, so give it more time than
         // the default expect timeout. If the register is unavailable the panel
-        // shows <Source>_error_message_no_contact instead, and this fails.
+        // shows <Source>_error_message_no_contact instead. Waiting for that too
+        // makes the test fail at once, naming the error, rather than time out on
+        // "element(s) not found".
         const panel = page.locator(visiblePanel);
-        const dataOrNoData = panel
+        const unavailable = panel.getByText(w.unavailable);
+        const settled = panel
           .getByRole("table")
-          .or(panel.getByText(tab.noDataText));
-        await expect(dataOrNoData.first()).toBeVisible({ timeout: 30000 });
-        await expect(panel).not.toContainText(w.unavailable);
+          .or(panel.getByText(tab.noDataText))
+          .or(unavailable);
+        await expect(settled.first()).toBeVisible({ timeout: 30000 });
+        await expect(
+          unavailable,
+          `${tab.name} register was unavailable in the app (not a test bug)`
+        ).toHaveCount(0);
       });
     }
 
