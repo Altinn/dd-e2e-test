@@ -82,7 +82,7 @@ const choices = [
     },
     saved: "Du har lagret offentlig skifte",
     chosen: "Du har valgt offentlig skifte",
-    allChoices: "Ønsker offentlig skifte (må sendes på papir)",
+    allChoices: "Ønsker offentlig skifte (Tingretten må kontaktes)",
   },
 ];
 
