@@ -178,6 +178,33 @@ const nb = {
       link: "Finn kontaktinformasjon på domstol.no",
     },
   },
+  probateProxy: {
+    /** HomePageNav, the first item in the breadcrumb. */
+    frontPage: "Forsiden",
+    previousLevel: "Forrige nivå",
+    decision: { heading: "Beslutning om skifteform", breadcrumb: "Beslutning" },
+    proxy: {
+      heading: "Skiftefullmakt",
+      about:
+        "En skiftefullmakt er en avtale hvor en arving med gjeldsansvar kan velge en annen person til å gjøre handlinger for dødsboet på vegne av seg.",
+      /** Home_probate_proxy_add_text, the link to the Gi skiftefullmakt page. */
+      giveLink: "Gi skiftefullmakt (valgfritt)",
+    },
+    give: {
+      heading: "Gi skiftefullmakt",
+      description:
+        "Det er vanlig å bare gi skiftefullmakt til én person. Hvis du gir skiftefullmakt til flere, kan det være vanskelig å vite hvem som skal representere deg.",
+      who: "Hvem vil du gi skiftefullmakt til?",
+      button: "Gi skiftefullmakt",
+    },
+    addPerson: {
+      heading: "Legg til person",
+      description:
+        "Her kan du gi skiftefullmakt til en person som ikke har tilgang til Digitalt dødsbo fra før.",
+      nin: "Fødselsnummer (11 siffer)",
+      fetch: "Hent person",
+    },
+  },
 };
 
 export type Texts = typeof nb;
@@ -344,6 +371,31 @@ const nn: Texts = {
         "Kontakt tingretten for å avklare vidare prosess",
       ],
       link: "Finn kontaktinformasjon på domstol.no",
+    },
+  },
+  probateProxy: {
+    frontPage: "Framsida",
+    previousLevel: "Førre nivå",
+    decision: { heading: "Avgjerd om skifteform", breadcrumb: "Avgjerd" },
+    proxy: {
+      heading: "Skiftefullmakt",
+      about:
+        "Ei skiftefullmakt er ein avtale der ein arving med gjeldsansvar kan velje ein annan person til å gjere handlingar for dødsbuet på vegner av seg.",
+      giveLink: "Gje skiftefullmakt (valfritt)",
+    },
+    give: {
+      heading: "Gje skiftefullmakt",
+      description:
+        "Det er vanleg å berre gje skiftefullmakt til éin person. Dersom du gjev skiftefullmakt til fleire, kan det vere vanskeleg å vite kven som skal representere deg.",
+      who: "Kven vil du gje skiftefullmakt til?",
+      button: "Gje skiftefullmakt",
+    },
+    addPerson: {
+      heading: "Legg til person",
+      description:
+        "Her kan du gje skiftefullmakt til ein person som ikkje har tilgang til Digitalt dødsbu frå før.",
+      nin: "Fødselsnummer (11 siffer)",
+      fetch: "Hent person",
     },
   },
 };
