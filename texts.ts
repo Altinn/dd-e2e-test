@@ -155,8 +155,8 @@ const nb = {
     howToProceed: "Slik går du frem",
     saveChoiceStep: "Lagre ditt valg i Digitalt dødsbo",
     cancel: "Avbryt",
-    /** Navigation_back_to_parent_prefix, with the breadcrumb of step 4. */
-    backToProbate: "Tilbake til velg skifteform",
+    /** Navigation_previous_level_text, the link at the bottom of the page. */
+    previousLevel: "Forrige nivå",
     lowValueEstate: {
       heading: "Dødsbo av liten verdi",
       intro: "Bo av liten verdi er ikke digitalisert",
@@ -351,7 +351,7 @@ const nn: Texts = {
     // Not translated in resource.nn.json.
     saveChoiceStep: "Lagre ditt valg i Digitalt dødsbo",
     cancel: "Avbryt",
-    backToProbate: "Tilbake til vel skifteform",
+    previousLevel: "Førre nivå",
     lowValueEstate: {
       heading: "Dødsbu av liten verdi",
       intro: "Bu av liten verdi er ikkje digitalisert",

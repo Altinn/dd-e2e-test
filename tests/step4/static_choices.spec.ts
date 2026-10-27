@@ -82,7 +82,7 @@ const choices = [
     },
     saved: "Du har lagret offentlig skifte",
     chosen: "Du har valgt offentlig skifte",
-    allChoices: "Ønsker offentlig skifte (må sendes på papir)",
+    allChoices: "Ønsker offentlig skifte (Tingretten må kontaktes)",
   },
 ];
 
@@ -230,7 +230,7 @@ for (const choice of choices) {
         page,
       }) => {
         await page
-          .getByRole("link", { name: "Tilbake til velg skifteform" })
+          .getByRole("link", { name: "Forrige nivå" })
           .click();
 
         await expect(page).toHaveURL(/#your-choice$/);
@@ -389,7 +389,7 @@ for (const choicePage of nynorskPages) {
         page,
       }) => {
         await page
-          .getByRole("link", { name: nn.staticChoice.backToProbate })
+          .getByRole("link", { name: nn.staticChoice.previousLevel })
           .click();
 
         await expect(page).toHaveURL(/#your-choice$/);
