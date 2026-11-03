@@ -126,6 +126,11 @@ test.describe('Link Validation', () => {
             result.error = 'Blocked by bot protection (Cloudflare challenge)';
             result.ok = false;
             unreachableLinks.push(result);
+          } else if (isBlockedForBots(response, link)) {
+            // Reported as unreachable — see the note above isBlockedForBots.
+            result.error = 'Blocked by bot protection (403 from a host that blocks CI)';
+            result.ok = false;
+            unreachableLinks.push(result);
           } else if (!response.ok()) {
             // Provide specific error messages based on status code
             const statusMessages: { [key: number]: string } = {
@@ -298,6 +303,22 @@ function isNetworkLevelError(message: string): boolean {
  */
 function isBotChallenge(response: { status(): number; headers(): Record<string, string> }): boolean {
   return response.status() === 403 && response.headers()['cf-mitigated'] === 'challenge';
+}
+
+/**
+ * Hosts that answer requests from CI with a plain 403, without a marker like
+ * Cloudflare's, while the link opens fine in a normal browser. Microsoft Forms
+ * does this for the feedback form linked from the app.
+ */
+const hostsBlockingBots = ['forms.cloud.microsoft'];
+
+/**
+ * Detect a 403 from a host in hostsBlockingBots, so it is reported as
+ * unreachable instead of failing the build. Any other status from these hosts,
+ * such as a 404 for a removed form, still fails.
+ */
+function isBlockedForBots(response: { status(): number }, link: string): boolean {
+  return response.status() === 403 && hostsBlockingBots.includes(new URL(link).hostname);
 }
 
 /**
