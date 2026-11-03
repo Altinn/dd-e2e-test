@@ -9,8 +9,20 @@ import { texts } from "./texts";
  * app shows in its header.
  */
 async function logIn(browser: Browser, heir: Heir) {
-  const page = await browser.newPage();
-  await logInToAltinn(page, process.env[heir.ssnVariable]!);
+  // tt02's login sometimes hangs on af.tt02.altinn.no/api/login, which used to
+  // fail every test in the shard. One retry on a fresh page gets past it.
+  let page = await browser.newPage();
+  try {
+    await logInToAltinn(page, process.env[heir.ssnVariable]!);
+  } catch (error) {
+    console.warn(
+      `${heir.label}: logging in to Altinn failed; retrying once. ` +
+        `${error instanceof Error ? error.message.split("\n")[0] : error}`
+    );
+    await page.close();
+    page = await browser.newPage();
+    await logInToAltinn(page, process.env[heir.ssnVariable]!);
+  }
   const t = texts[heir.language];
 
   // The heir should land on the estate's front page. If not, say where they
