@@ -74,6 +74,57 @@ async function logIn(browser: Browser, heir: Heir) {
   return { url, name };
 }
 
+/**
+ * Calls the app's Kartverket endpoint until it answers, before any test opens
+ * the eiendom tab. The app fetches it from DAN's Grunnbok dataset, which in
+ * tt02 fails the first burst of calls after a quiet period with 400, 502 and
+ * 503, and recovers within minutes. One heir's call per shard warms it up
+ * instead of every test hitting it cold.
+ *
+ * A register that stays down is left to the eiendom tests to report, so this
+ * only logs.
+ */
+async function warmUpGrunnbok(browser: Browser, heir: Heir, estateUrl: string) {
+  const instance = estateUrl.match(/#\/instance\/(\d+)\/([0-9a-f-]+)/i);
+  if (!instance) {
+    console.warn(`Grunnbok warm-up skipped: no instance in ${estateUrl}`);
+    return;
+  }
+  const [, partyId, instanceGuid] = instance;
+  const appUrl = estateUrl.slice(0, estateUrl.indexOf("#")).replace(/\/$/, "");
+  const kartverketUrl = `${appUrl}/api/externalapi/kartverket/${partyId}/${instanceGuid}`;
+
+  const context = await browser.newContext({ storageState: heir.storageState });
+  const started = Date.now();
+  const deadline = started + 3 * 60_000;
+  let attempt = 0;
+  let lastOutcome = "";
+  try {
+    while (Date.now() < deadline) {
+      attempt++;
+      const response = await context.request
+        .get(kartverketUrl, { timeout: 60_000 })
+        .catch((error: Error) => error);
+      if (!(response instanceof Error) && response.ok()) {
+        console.log(
+          `Grunnbok warm-up: ready after ${attempt} attempt(s), ` +
+            `${Math.round((Date.now() - started) / 1000)} s`
+        );
+        return;
+      }
+      lastOutcome =
+        response instanceof Error ? response.message.split("\n")[0] : `HTTP ${response.status()}`;
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+    }
+    console.warn(
+      `Grunnbok warm-up: not ready after ${attempt} attempt(s), ` +
+        `${Math.round((Date.now() - started) / 1000)} s; last: ${lastOutcome}`
+    );
+  } finally {
+    await context.close();
+  }
+}
+
 async function globalSetup(_config: FullConfig) {
   const allHeirs = Object.values(heirs);
 
@@ -89,6 +140,7 @@ async function globalSetup(_config: FullConfig) {
   const logins = await Promise.all(
     allHeirs.map((heir) => logIn(browser, heir))
   );
+  await warmUpGrunnbok(browser, allHeirs[0], logins[0].url);
   await browser.close();
 
   allHeirs.forEach((heir, index) => {
