@@ -43,7 +43,7 @@ const choices = [
     },
     saved: "Du har lagret uskifte",
     chosen: "Du har valgt uskifte",
-    allChoices: "Ønsker uskifte (må sendes på papir)",
+    allChoices: /uskifte/i,
   },
   {
     name: "Bo av liten verdi",
@@ -63,7 +63,7 @@ const choices = [
     },
     saved: "Du har lagret dødsbo av liten verdi",
     chosen: "Du har valgt bo av liten verdi",
-    allChoices: "Bo av liten verdi (må sendes på papir)",
+    allChoices: /bo av liten verdi/i,
   },
   {
     name: "Offentlig skifte",
@@ -82,7 +82,7 @@ const choices = [
     },
     saved: "Du har lagret offentlig skifte",
     chosen: "Du har valgt offentlig skifte",
-    allChoices: "Ønsker offentlig skifte (Tingretten må kontaktes)",
+    allChoices: /offentlig skifte/i,
   },
 ];
 

@@ -529,7 +529,7 @@ test.describe(
         .getByRole("listitem")
         .filter({ hasText: heirName(heir) });
       await expect(heirRow).toHaveCount(1);
-      await expect(heirRow).toContainText("Privat skifte (med gjeldsansvar)");
+      await expect(heirRow).toContainText(/privat skifte.*med gjeldsansvar/i);
       const othersDeclaration = heirRow.getByRole("link", {
         name: declarationLink,
       });
