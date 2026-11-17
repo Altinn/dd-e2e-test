@@ -15,7 +15,7 @@ const nb = {
   home: {
     pageTitle: "Startside - Digitalt Dødsbo",
     /** TitleText, followed by the name of the deceased. */
-    heading: "Digitalt dødsbo etter",
+    heading: "Dødsboet etter",
     logOut: "Logg ut",
   },
   breadcrumbs: "Brødsmulesti",
@@ -217,7 +217,7 @@ const nn: Texts = {
   },
   home: {
     pageTitle: "Startside - Digitalt Dødsbu",
-    heading: "Digitalt dødsbu etter",
+    heading: "Dødsbuet etter",
     logOut: "Logg ut",
   },
   breadcrumbs: "Brødsmulesti",
