@@ -178,6 +178,31 @@ const nb = {
       link: "Finn kontaktinformasjon på domstol.no",
     },
   },
+  practicalTasks: {
+    /** Practical_matters_card_title, the card on the front page. */
+    card: "Oppgaver",
+    pageTitle: "Oppgaver - Digitalt Dødsbo",
+    heading: "Praktiske oppgaver",
+    /** The headings in Practical_matters_list, in order. */
+    tasks: [
+      "Avslutte abonnement",
+      "Avvikle eller videreføre leieforhold",
+      "Få tillatelse til å disponere den dødes bankkontoer",
+      "Omadressere posten",
+      "Undersøke digitale postkasser",
+      "Slette profiler fra sosiale medier",
+      "Overføre eiendom",
+      "Sjekk om du har rett til pengestøtte fra NAV",
+      "Ordne opp i den dødes næringsvirksomhet",
+      "Varsle gravplassmyndigheten om feste",
+      "Undersøke bankbokser",
+    ],
+    graveLease:
+      "Hvis den døde fester én eller flere graver, må arvingene avklare hvem som skal overta festeavtalen(e). Dette meldes til gravplassmyndigheten i kommunen det gjelder. Den døde kan være fester i flere enn én kommune.",
+    socialMediaHelp:
+      "Hvis du står fast eller trenger hjelp underveis, kan du få råd og veiledning på slettmeg.no og nettvett.no.",
+    kartverketLink: "nettsiden til Kartverket",
+  },
   probateProxy: {
     /** HomePageNav, the first item in the breadcrumb. */
     frontPage: "Forsiden",
@@ -372,6 +397,29 @@ const nn: Texts = {
       ],
       link: "Finn kontaktinformasjon på domstol.no",
     },
+  },
+  practicalTasks: {
+    card: "Oppgåver",
+    pageTitle: "Oppgåver - Digitalt Dødsbu",
+    heading: "Praktiske oppgåver",
+    tasks: [
+      "Avslutte abonnement",
+      "Avvikle eller vidareføre leigeforhold",
+      "Få løyve til å disponere den døde sine bankkontoar",
+      "Omadressere posten",
+      "Undersøkje digitale postkassar",
+      "Slette profilar frå sosiale medium",
+      "Overføre eigedom",
+      "Sjekk om du har rett til pengestøtte frå NAV",
+      "Ordne opp i næringsverksemda til den døde",
+      "Varsle gravplassmyndigheita om feste",
+      "Undersøkje bankboksar",
+    ],
+    graveLease:
+      "Dersom den døde fester éin eller fleire graver, må arvingane avklare kven som skal overta festeavtalen(e). Dette blir meldt til gravplassmyndigheita i kommunen det gjeld. Den døde kan vere festar i fleire enn éin kommune.",
+    socialMediaHelp:
+      "Dersom du står fast eller treng hjelp undervegs, kan du få råd og rettleiing på slettmeg.no og nettvett.no.",
+    kartverketLink: "nettsida til Kartverket",
   },
   probateProxy: {
     frontPage: "Framsida",
