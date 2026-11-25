@@ -126,6 +126,24 @@ for (const heir of languageHeirs) {
       await expect(panel).not.toContainText(w.unavailable);
     });
 
+    test("the bank tab explains how far back the transactions go", async ({
+      page,
+    }) => {
+      await page
+        .getByRole("tab", { name: w.tabs.bank.name, exact: true })
+        .click();
+
+      // The questions at the bottom of the tab are closed until clicked.
+      const panel = page.locator(visiblePanel);
+      const question = panel.getByRole("button", {
+        name: w.bankTransactions.question,
+      });
+      await question.click();
+
+      await expect(question).toHaveAttribute("aria-expanded", "true");
+      await expect(panel.getByText(w.bankTransactions.answer)).toBeVisible();
+    });
+
     test("the breadcrumb leads back to the front page", async ({ page }) => {
       await page
         .getByRole("navigation", { name: t.breadcrumbs })

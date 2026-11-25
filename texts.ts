@@ -68,6 +68,12 @@ const nb = {
     /** <Source>_error_message_no_contact */
     unavailable: /ikke tilgjengelig for øyeblikket/i,
     goToTax: "Gå til Skatteetaten",
+    /** Bank_back_in_time_transactions_title and _text, a question on the bank tab. */
+    bankTransactions: {
+      question: "Hvor langt tilbake i tid kan jeg se transaksjoner?",
+      answer:
+        "Digitalt dødsbo viser bevegelser på konto tre måneder tilbake i tid fra dødsdato. For eldre transaksjoner har banken taushetsplikt og kan ikke gi innsyn uten videre. Trenger du innsyn lenger tilbake i tid, må du kontakte banken og begrunne behovet. Banken vil da vurdere om vilkårene for innsyn er oppfylt.",
+    },
   },
   checklist: {
     button: "Bruk din egen sjekkliste",
@@ -291,6 +297,11 @@ const nn: Texts = {
     },
     unavailable: /ikkje tilgjengeleg for augneblinken/i,
     goToTax: "Gå til Skatteetaten",
+    bankTransactions: {
+      question: "Kor langt tilbake i tid kan eg sjå transaksjonar?",
+      answer:
+        "Digitalt dødsbu viser rørsler på konto tre månader tilbake i tid frå dødsdato. For eldre transaksjonar har banken teieplikt og kan ikkje gje innsyn utan vidare. Treng du innsyn lenger tilbake i tid, må du kontakte banken og grunngje behovet. Banken vil då vurdere om vilkåra for innsyn er oppfylte.",
+    },
   },
   checklist: {
     button: "Bruk di eiga sjekkliste",
