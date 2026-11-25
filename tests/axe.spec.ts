@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright'; // 1
+import { detailsOf, detailsSummary } from '../details';
 
 // Pin the rules to WCAG 2.0, 2.1 and 2.2 at level A and AA, instead of relying
 // on whatever axe enables by default. uu-forskriften requires WCAG 2.1 AA; 2.2
@@ -15,7 +16,7 @@ const WCAG_TAGS = [
 const REFLOW_VIEWPORT = { width: 320, height: 256 };
 
 // On narrow screens the tabs are replaced by an accordion where only one
-// section is open at a time, with a u-details per tab.
+// section is open at a time, with a Details per tab.
 const MOBILE_TAB_SECTION = '.tabs-navigation__details';
 const CLOSED_MOBILE_TAB_SECTION = `${MOBILE_TAB_SECTION}:not([open])`;
 
@@ -79,8 +80,9 @@ const waitForPageToSettle = async (page: Page) => {
       animation.playState !== 'running' ||
       animation.effect?.getComputedTiming().iterations === Infinity));
 
-  // The sections open and close inside the shadow DOM of u-details, where
-  // getAnimations() does not see them, so also wait for the height to settle.
+  // getAnimations() may not see the sections opening and closing (before
+  // Designsystemet 1.24 they animated inside the shadow DOM of u-details), so
+  // also wait for the height to settle.
   let previousHeight = -1;
   await expect.poll(async () => {
     const height = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -116,7 +118,10 @@ const clickAllButtonsInGroup = async (page: Page) => {
   const groupCount = await groups.count();
 
   for (let groupIndex = 0; groupIndex < groupCount; groupIndex++) {
-    const buttons = groups.nth(groupIndex).getByRole('button');
+    // A native <summary> (Designsystemet 1.24) is not a button to Playwright,
+    // so add the summaries to open the Details as well.
+    const group = groups.nth(groupIndex);
+    const buttons = group.getByRole('button').or(group.locator('summary'));
     const buttonCount = await buttons.count();
 
     for (let buttonIndex = 0; buttonIndex < buttonCount; buttonIndex++) {
@@ -127,11 +132,9 @@ const clickAllButtonsInGroup = async (page: Page) => {
 
 const goToTab = async(page: Page, tabName: string) => {
     if (isReflowViewport(page)) {
-      const section = page
-          .locator(MOBILE_TAB_SECTION)
-          .getByRole("button", { name: tabName, exact: true });
-      if (await section.getAttribute("aria-expanded") !== "true") {
-        await section.click();
+      const summary = detailsSummary(page.locator(MOBILE_TAB_SECTION), tabName);
+      if (await detailsOf(summary).getAttribute("open") === null) {
+        await summary.click();
       }
       return;
     }
