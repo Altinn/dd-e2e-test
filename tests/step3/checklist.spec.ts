@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { languageHeirs, languageName } from "../../heirs";
 import { containing, texts, type Texts } from "../../texts";
+import { detailsSummary } from "../../details";
 
 /**
  * Step 3 on the front page: "Bruk din egen sjekkliste".
@@ -68,13 +69,11 @@ const pointLinks = (t: Texts) => {
 };
 
 /**
- * A point in the checklist. The heading of a point is the button that expands
+ * A point in the checklist. The title of a point is the summary that expands
  * and collapses its explanation.
  */
 const checklistPoint = (page: Page, title: string) =>
-  page
-    .getByRole("listitem")
-    .filter({ has: page.getByRole("button", { name: title, exact: true }) });
+  page.getByRole("listitem").filter({ has: detailsSummary(page, title) });
 
 /**
  * Marks or unmarks a point and waits until the change has been saved, so a

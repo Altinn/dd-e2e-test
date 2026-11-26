@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { languageHeirs, languageName } from "../../heirs";
 import { containing, texts } from "../../texts";
+import { detailsOf, detailsSummary } from "../../details";
 
 /**
  * Step 2 on the front page: "Sett deg inn i formue og gjeld".
@@ -135,12 +136,10 @@ for (const heir of languageHeirs) {
 
       // The questions at the bottom of the tab are closed until clicked.
       const panel = page.locator(visiblePanel);
-      const question = panel.getByRole("button", {
-        name: w.bankTransactions.question,
-      });
+      const question = detailsSummary(panel, w.bankTransactions.question);
       await question.click();
 
-      await expect(question).toHaveAttribute("aria-expanded", "true");
+      await expect(detailsOf(question)).toHaveAttribute("open");
       await expect(panel.getByText(w.bankTransactions.answer)).toBeVisible();
     });
 
